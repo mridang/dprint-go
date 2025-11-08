@@ -1,0 +1,42 @@
+name: Release to Github
+
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    working-directory: ./
+
+jobs:
+  publish-package:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Setup TinyGo
+        uses: acifani/setup-tinygo@v2
+        with:
+          tinygo-version: '0.39.0'
+
+      - name: Install Semantic Release
+        run: |
+          npm install --global semantic-release
+          npm install --global @semantic-release/git
+          npm install --global @semantic-release/exec
+
+      - name: Run semantic-release
+        uses: mridang/action-semantic-release@v1.0.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}

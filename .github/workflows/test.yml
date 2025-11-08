@@ -1,0 +1,53 @@
+name: Run Tests (Jest)
+
+on: push
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    working-directory: ./
+
+jobs:
+  app-testing:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: ./docker_images
+          key: ${{ runner.os }}-docker-${{ hashFiles('docker-compose.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-docker-
+
+#      - name: Docker pull
+#        run: |
+#          IMAGES_DIR="./docker_images"
+#          COMBINED_IMAGES_TAR="$IMAGES_DIR/combined_images.tar"
+#
+#          if [ -f "$COMBINED_IMAGES_TAR" ]; then
+#          docker image load -i "$COMBINED_IMAGES_TAR"
+#          else
+#          mkdir -p "$IMAGES_DIR"
+#          IMAGES=$(docker compose config --images)
+#          docker pull $IMAGES
+#          docker image save -o "$COMBINED_IMAGES_TAR" $IMAGES
+#          fi
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Setup TinyGo
+        uses: acifani/setup-tinygo@v2
+        with:
+          tinygo-version: '0.39.0'
+
+      - name: Run Tests
+        run: make test

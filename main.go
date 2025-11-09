@@ -10,9 +10,34 @@ import (
 	"unsafe"
 )
 
+// Constants for the dprint WASM ABI
+const (
+	// Schema version supported by this plugin
+	dprintPluginSchemaVersion = 4
+
+	// Shared buffer size (1MB) for communication between host and plugin
+	sharedBufferSize = 1 << 20
+
+	// Plugin configuration
+	pluginName    = "dprint-plugin-go-noop"
+	pluginKey     = "go-noop"
+	pluginHelpURL = ""
+	pluginSchema  = ""
+
+	// Format return values as defined by dprint WASM ABI
+	formatResultNoChange = 0 // No formatting changes needed
+	formatResultChanged  = 1 // Content was formatted and changed
+	formatResultError    = 2 // Formatting error occurred
+)
+
 //go:embed VERSION
 var versionFile string
 
+//go:embed LICENSE
+var licenseText string
+
+// PluginInfo represents the JSON structure returned by get_plugin_info.
+// See: https://dprint.dev/plugins/wasm/#get_plugin_info
 type PluginInfo struct {
 	Name            string   `json:"name"`
 	Version         string   `json:"version"`
@@ -23,32 +48,32 @@ type PluginInfo struct {
 	ConfigSchemaUrl string   `json:"configSchemaUrl"`
 }
 
-//go:embed LICENSE
-var licenseText string
+// FileMatchingInfo represents the JSON structure returned by
+// get_config_file_matching.
+type FileMatchingInfo struct {
+	FileExtensions []string `json:"fileExtensions"`
+	FileNames      []string `json:"fileNames"`
+}
 
-const bufSize = 1 << 20
+// Global state variables
+var (
+	shared          [sharedBufferSize]byte
+	activeSize      uint32
+	initialized     bool
+	fileContentSize uint32
+)
 
-var shared [bufSize]byte
-var activeSize uint32
-var initialized bool
-var fileContentSize uint32 // Track the file content size separately
-
-// distinct globals to prevent ICF.
-var _gA uint8
-var _gB uint8
-var _gC uint8
-var _gD uint8
-var _gE uint8
-var _gF uint8
-
+// ensureInit initializes the plugin if not already initialized.
+// This must be called before any other plugin operations.
 func ensureInit() {
 	if !initialized {
 		initialized = true
-		// Initialize shared buffer
 		_ = uintptr(unsafe.Pointer(&shared[0]))
 	}
 }
 
+// putShared copies data to the shared buffer and returns the number of bytes
+// copied. If the data is larger than the buffer, it will be truncated.
 func putShared(b []byte) uint32 {
 	ensureInit()
 	if b == nil {
@@ -61,169 +86,168 @@ func putShared(b []byte) uint32 {
 	return uint32(n)
 }
 
+// get_shared_bytes_ptr returns a pointer to the shared Wasm memory buffer.
+// This is called by the dprint CLI to access the shared buffer.
+// See: https://dprint.dev/plugins/wasm/#get_shared_bytes_ptr
+//
 //go:wasmexport get_shared_bytes_ptr
 //go:noinline
-//goland:noinspection ALL
+//goland:noinspection GoUnusedFunction,GoSnakeCaseUsage
 func get_shared_bytes_ptr() uint32 {
 	ensureInit()
 	return uint32(uintptr(unsafe.Pointer(&shared[0])))
 }
 
+// clear_shared_bytes clears the shared byte array and returns a pointer to it.
+// The dprint CLI calls this to prepare the buffer for writing file content.
+// See: https://dprint.dev/plugins/wasm/#clear_shared_bytes
+//
 //go:wasmexport clear_shared_bytes
 //go:noinline
-//goland:noinspection ALL
+//goland:noinspection GoUnusedFunction,GoSnakeCaseUsage
 func clear_shared_bytes(size uint32) uint32 {
 	ensureInit()
-	if size > bufSize {
-		size = bufSize
+	if size > sharedBufferSize {
+		size = sharedBufferSize
 	}
-	// Store the size - this is the size of the file content that will be written
 	activeSize = size
-	fileContentSize = size // Remember this for format()
-	// Don't actually clear - dprint will write the content
+	fileContentSize = size
 	return uint32(uintptr(unsafe.Pointer(&shared[0])))
 }
 
+// dprint_plugin_version_4 returns the schema version supported by this plugin.
+// The CLI checks for this export to determine plugin compatibility.
+// See: https://dprint.dev/plugins/wasm/#dprint_plugin_version_4
+//
 //go:wasmexport dprint_plugin_version_4
 //go:noinline
-//goland:noinspection ALL
+//goland:noinspection GoUnusedFunction,GoSnakeCaseUsage
 func dprint_plugin_version_4() uint32 {
 	ensureInit()
-	return 4
+	return dprintPluginSchemaVersion
 }
 
+// get_plugin_info serializes and returns the plugin information as JSON.
+// This includes the plugin name, version, configuration key, and supported
+// file extensions. See: https://dprint.dev/plugins/wasm/#get_plugin_info
+//
 //go:wasmexport get_plugin_info
 //go:noinline
-//goland:noinspection ALL
+//goland:noinspection GoUnusedFunction,GoSnakeCaseUsage
 func get_plugin_info() uint32 {
 	ensureInit()
 
 	version := strings.TrimSpace(versionFile)
-
 	info := PluginInfo{
-		Name:            "dprint-plugin-go-noop",
+		Name:            pluginName,
 		Version:         version,
-		ConfigKey:       "go-noop",
+		ConfigKey:       pluginKey,
 		FileExtensions:  []string{"go"},
 		FileNames:       []string{},
-		HelpUrl:         "",
-		ConfigSchemaUrl: "",
+		HelpUrl:         pluginHelpURL,
+		ConfigSchemaUrl: pluginSchema,
 	}
 
 	jsonData, err := json.Marshal(info)
 	if err != nil {
-		// Fallback to empty JSON object if marshal fails
 		return putShared([]byte("{}"))
 	}
 
 	return putShared(jsonData)
 }
 
+// get_license_text returns the license text for this plugin.
+// The license is embedded at compile time from the LICENSE file.
+// See: https://dprint.dev/plugins/wasm/#get_license_text
+//
 //go:wasmexport get_license_text
 //go:noinline
+//goland:noinspection GoUnusedFunction,GoSnakeCaseUsage
 func get_license_text() uint32 {
 	ensureInit()
 	return putShared([]byte(licenseText))
 }
 
-//go:wasmexport register_config
-//go:noinline
-//goland:noinspection ALL
-func register_config(config_id uint32) {
-	ensureInit()
-	_gA = _gA ^ 1
-}
-
-//go:wasmexport release_config
-//go:noinline
-//goland:noinspection ALL
-func release_config(config_id uint32) {
-	ensureInit()
-	_gB = _gB ^ 1
-}
-
-//go:wasmexport get_config_diagnostics
-//go:noinline
-//goland:noinspection ALL
-func get_config_diagnostics(config_id uint32) uint32 {
-	ensureInit()
-	_gC = _gC ^ 1
-	return putShared([]byte("[]"))
-}
-
-//go:wasmexport get_resolved_config
-//go:noinline
-//goland:noinspection ALL
-func get_resolved_config(config_id uint32) uint32 {
-	ensureInit()
-	_gD = _gD ^ 1
-	return putShared([]byte("{}"))
-}
-
+// get_config_file_matching returns the file matching configuration as JSON.
+// This tells dprint which files this plugin can format.
+// See: https://dprint.dev/plugins/wasm/#get_config_file_matching
+//
 //go:wasmexport get_config_file_matching
 //go:noinline
-//goland:noinspection ALL
+//goland:noinspection GoUnusedFunction,GoUnusedParameter,GoSnakeCaseUsage
 func get_config_file_matching(config_id uint32) uint32 {
 	ensureInit()
 	_gE = _gE ^ 1
-	// Return the file matching info as JSON
-	matching := []byte(`{"fileExtensions":["go"],"fileNames":[]}`)
-	return putShared(matching)
+	matching := FileMatchingInfo{
+		FileExtensions: []string{"go"},
+		FileNames:      []string{},
+	}
+
+	jsonData, err := json.Marshal(matching)
+	if err != nil {
+		return putShared([]byte(`{"fileExtensions":[],"fileNames":[]}`))
+	}
+
+	return putShared(jsonData)
 }
 
+// set_file_path is called by the CLI to set the file path in the shared buffer.
+// The plugin can read this path if needed for context-specific formatting.
+// See: https://dprint.dev/plugins/wasm/#set_file_path
+//
 //go:wasmexport set_file_path
 //go:noinline
-//goland:noinspection ALL
+//goland:noinspection GoUnusedFunction,GoSnakeCaseUsage
 func set_file_path() {
 	ensureInit()
 	_gF = _gF ^ 1
-	// dprint writes the file path to shared buffer
-	// We could read it here if needed, but for now just note it was called
 }
 
+// set_override_config is called by the CLI to set override configuration.
+// This allows per-file or per-directory configuration overrides.
+// See: https://dprint.dev/plugins/wasm/#set_override_config
+//
 //go:wasmexport set_override_config
 //go:noinline
-//goland:noinspection ALL
+//goland:noinspection GoUnusedFunction,GoSnakeCaseUsage
 func set_override_config() {
 	ensureInit()
-	// do nothing - valid no-op
 }
 
+// format performs the actual code formatting using Go's standard formatter.
+// Returns formatResultNoChange (0) for no changes, formatResultChanged (1)
+// for successful formatting, or formatResultError (2) for errors.
+// See: https://dprint.dev/plugins/wasm/#format
+//
 //go:wasmexport format
 //go:noinline
-//goland:noinspection ALL
+//goland:noinspection GoUnusedFunction,GoUnusedParameter,GoSnakeCaseUsage
 func format(config_id uint32) uint32 {
 	ensureInit()
 
-	// Get the content size
 	contentSize := fileContentSize
 	if activeSize > contentSize {
 		contentSize = activeSize
 	}
 
-	if contentSize == 0 || contentSize > bufSize {
-		return 0 // no content or too large
+	if contentSize == 0 || contentSize > sharedBufferSize {
+		return formatResultNoChange
 	}
 
-	// Read the original content from shared buffer
 	originalContent := make([]byte, contentSize)
 	copy(originalContent, shared[:contentSize])
 
-	// Format using go/format
 	formatted, err := gofmt.Source(originalContent)
 	if err != nil {
-		// If there's a formatting error, return the error
-		// Store error message in shared buffer for get_error_text
 		errMsg := []byte(err.Error())
-		if len(errMsg) > bufSize {
-			errMsg = errMsg[:bufSize]
+		if len(errMsg) > sharedBufferSize {
+			errMsg = errMsg[:sharedBufferSize]
 		}
 		copy(shared[:], errMsg)
 		activeSize = uint32(len(errMsg))
-		return 2 // error
+		return formatResultError
 	}
 
-	// Check if content changed
 	if len(formatted) == len(originalContent) {
 		same := true
 		for i := range len(formatted) {
@@ -233,41 +257,105 @@ func format(config_id uint32) uint32 {
 			}
 		}
 		if same {
-			return 0 // no change
+			return formatResultNoChange
 		}
 	}
 
-	// Store formatted content back in shared buffer
-	if len(formatted) > bufSize {
-		formatted = formatted[:bufSize]
+	if len(formatted) > sharedBufferSize {
+		formatted = formatted[:sharedBufferSize]
 	}
 
 	activeSize = uint32(len(formatted))
 	copy(shared[:], formatted)
 
-	// Return 1 to indicate a change was made
-	return 1
+	return formatResultChanged
 }
 
+// get_formatted_text returns the size of the formatted text in the shared
+// buffer. Called after format() returns formatResultChanged.
+// See: https://dprint.dev/plugins/wasm/#get_formatted_text
+//
 //go:wasmexport get_formatted_text
 //go:noinline
-//goland:noinspection ALL
+//goland:noinspection GoUnusedFunction,GoSnakeCaseUsage
 func get_formatted_text() uint32 {
 	ensureInit()
-	// Return the size of the formatted text in the shared buffer
 	return activeSize
 }
 
+// get_error_text returns the size of the error text in the shared buffer.
+// Called after format() returns formatResultError.
+// See: https://dprint.dev/plugins/wasm/#get_error_text
+//
 //go:wasmexport get_error_text
 //go:noinline
-//goland:noinspection ALL
+//goland:noinspection GoUnusedFunction,GoSnakeCaseUsage
 func get_error_text() uint32 {
 	ensureInit()
-	// Return the size of the error text in the shared buffer
-	// (it was already written there by format() when it returned 2)
 	return activeSize
 }
 
+// main is the entry point for the WASM module.
 func main() {
 	ensureInit()
+}
+
+// Dummy globals to prevent Identical Code Folding optimization from
+// merging these placeholder functions.
+var (
+	_gA uint8
+	_gB uint8
+	_gC uint8
+	_gD uint8
+	_gE uint8
+	_gF uint8
+)
+
+// register_config is called when plugin and global configuration is complete.
+// Store the configuration for later use during formatting.
+// See: https://dprint.dev/plugins/wasm/#register_config
+//
+//go:wasmexport register_config
+//go:noinline
+//goland:noinspection GoUnusedFunction,GoUnusedParameter,GoSnakeCaseUsage
+func register_config(config_id uint32) {
+	ensureInit()
+	_gA = _gA ^ 1
+}
+
+// release_config releases the configuration from memory when no longer needed.
+// See: https://dprint.dev/plugins/wasm/#release_config
+//
+//go:wasmexport release_config
+//go:noinline
+//goland:noinspection GoUnusedFunction,GoUnusedParameter,GoSnakeCaseUsage
+func release_config(config_id uint32) {
+	ensureInit()
+	_gB = _gB ^ 1
+}
+
+// get_config_diagnostics returns configuration validation diagnostics as JSON.
+// This should return an array of diagnostic messages for invalid config.
+// See: https://dprint.dev/plugins/wasm/#get_config_diagnostics
+//
+//go:wasmexport get_config_diagnostics
+//go:noinline
+//goland:noinspection GoUnusedFunction,GoUnusedParameter,GoSnakeCaseUsage
+func get_config_diagnostics(config_id uint32) uint32 {
+	ensureInit()
+	_gC = _gC ^ 1
+	return putShared([]byte("[]"))
+}
+
+// get_resolved_config returns the resolved configuration as JSON for display
+// in the CLI. This shows the final configuration after all processing.
+// See: https://dprint.dev/plugins/wasm/#get_resolved_config
+//
+//go:wasmexport get_resolved_config
+//go:noinline
+//goland:noinspection GoUnusedFunction,GoUnusedParameter,GoSnakeCaseUsage
+func get_resolved_config(config_id uint32) uint32 {
+	ensureInit()
+	_gD = _gD ^ 1
+	return putShared([]byte("{}"))
 }

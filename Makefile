@@ -16,7 +16,7 @@ lint:
 
 # Force module mode and CGO so wasmer-go finds its packaged libs.
 test:
-	GOFLAGS= CGO_ENABLED=1 go test -mod=mod -v=true -cover=true -count=1 ./...
+	GOFLAGS= CGO_ENABLED=1 go test -mod=mod -v=true -cover=true -coverprofile=coverage.out -count=1 ./... && go tool cover -html=coverage.out -o coverage.html
 
 vendor:
 	go mod vendor

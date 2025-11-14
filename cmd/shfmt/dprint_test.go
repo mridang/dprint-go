@@ -3,22 +3,21 @@ package main
 import (
 	"bytes"
 	"context"
-	gofmt "go/format"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 )
 
-// TestDprint_Formats_Go_File verifies end-to-end formatting using dprint
+// TestDprint_Formats_Sh_File verifies end-to-end formatting using dprint
 // and the TinyGo-built plugin.
 //
-// The test builds the WebAssembly plugin with TinyGo, injects a start
-// section via the repository helper, writes a deliberately malformed Go
-// file in a temporary directory, invokes `dprint fmt` with the repo
-// configuration, and asserts the resulting file bytes match the
-// canonical output from go/format. It then runs dprint a second time to
+// The test builds the WebAssembly plugin with TinyGo, writes a deliberately
+// malformed shell file in a temporary directory, invokes `dprint fmt` with
+// the repo configuration, and asserts the resulting file bytes match the
+// canonical output from shfmt. It then runs dprint a second time to
 // assert idempotence.
 //
 // Preconditions:
@@ -26,44 +25,40 @@ import (
 //   - `tinygo` is available in PATH.
 //   - `dprint` is available in PATH.
 //   - `dprint.json` exists in the repository root and references the
-//     plugin artifact at `build/dprint.wasm`.
-//   - The helper `cmd/addstart/main.go` exists to inject a start section
-//     that calls `_initialize`.
+//     plugin artifact at `build/shfmt.wasm`.
 //
 // The test streams tool output on failures and uses timeouts to avoid
 // hanging in CI. It fails fast on any unmet precondition.
-func TestDprint_Formats_Go_File(t *testing.T) {
+func TestDprint_Formats_Sh_File(t *testing.T) {
 	requireInPath(t, "tinygo")
 	requireInPath(t, "dprint")
 
-	repoRoot := getwdOrFatal(t)
-	requireFile(t, filepath.Join(repoRoot, "dprint.json"))
+	pkgDir := getwdOrFatal(t)
+	repoRoot := filepath.Join(pkgDir, "..", "..")
+	requireFile(t, filepath.Join(pkgDir, "dprint.json"))
 	requireFile(t, filepath.Join(repoRoot, "cmd", "addstart", "main.go"))
 
 	buildPluginWasm(t)
-	injectStartSection(t)
+	injectStartSection(t, repoRoot)
 
 	td := t.TempDir()
-	srcPath := filepath.Join(td, "main.go")
+	srcPath := filepath.Join(td, "test.sh")
 
-	bad := []byte(`package main
-import "fmt"
-func main(){fmt.Println("ok")}
-`)
+	bad := []byte(`a=1;b=2; echo "ok"`)
 
 	if err := os.WriteFile(srcPath, bad, 0o644); err != nil {
 		t.Fatalf("write source: %v", err)
 	}
 
-	want, err := gofmt.Source(bad)
+	want, err := formatShell(bad, defaultConfig())
 	if err != nil {
-		t.Fatalf("go/format failed on input: %v", err)
+		t.Fatalf("shfmt failed on input: %v", err)
 	}
 	if bytes.Equal(bad, want) {
 		t.Fatalf("test input not malformed; no change would be observed")
 	}
 
-	runDprintFmt(t, td, filepath.Join(repoRoot, "dprint.json"))
+	runDprintFmt(t, td, filepath.Join(pkgDir, "dprint.json"))
 
 	got, err := os.ReadFile(srcPath)
 	if err != nil {
@@ -77,8 +72,8 @@ func main(){fmt.Println("ok")}
 		)
 	}
 
-	before := append([]byte(nil), got...)
-	runDprintFmt(t, td, filepath.Join(repoRoot, "dprint.json"))
+	before := slices.Clone(got)
+	runDprintFmt(t, td, filepath.Join(pkgDir, "dprint.json"))
 	after, err := os.ReadFile(srcPath)
 	if err != nil {
 		t.Fatalf("read file after second pass: %v", err)
@@ -88,7 +83,7 @@ func main(){fmt.Println("ok")}
 	}
 }
 
-// buildPluginWasm compiles the plugin to build/dprint.wasm using the
+// buildPluginWasm compiles the plugin to build/shfmt.wasm using the
 // same flags as production. A timeout is applied to prevent hangs.
 func buildPluginWasm(t *testing.T) {
 	t.Helper()
@@ -103,7 +98,7 @@ func buildPluginWasm(t *testing.T) {
 	cmd := exec.CommandContext(
 		ctx,
 		"tinygo", "build",
-		"-o=build/dprint.wasm",
+		"-o=build/shfmt.wasm",
 		"-target=wasm-unknown",
 		"-scheduler=none",
 		"-no-debug",
@@ -114,22 +109,23 @@ func buildPluginWasm(t *testing.T) {
 }
 
 // injectStartSection runs the helper to inject a start section and
-// replaces build/dprint.wasm with the fixed output.
-func injectStartSection(t *testing.T) {
+// replaces build/shfmt.wasm with the fixed output.
+func injectStartSection(t *testing.T, repoRoot string) {
 	t.Helper()
 
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
+	addstartPath := filepath.Join(repoRoot, "cmd", "addstart", "main.go")
 	cmd := exec.CommandContext(
 		ctx,
-		"go", "run", "./cmd/addstart/main.go",
-		"build/dprint.wasm",
+		"go", "run", addstartPath,
+		"build/shfmt.wasm",
 		"build/dprint-fixed.wasm",
 	)
 	runCmd(t, cmd, "addstart")
 
-	if err := os.Rename("build/dprint-fixed.wasm", "build/dprint.wasm"); err != nil {
+	if err := os.Rename("build/dprint-fixed.wasm", "build/shfmt.wasm"); err != nil {
 		t.Fatalf("rename fixed wasm: %v", err)
 	}
 }
@@ -144,7 +140,7 @@ func runDprintFmt(t *testing.T, workDir, configPath string) {
 
 	cmd := exec.CommandContext(
 		ctx,
-		"dprint", "fmt", "main.go",
+		"dprint", "fmt", "test.sh",
 		"--log-level=debug",
 		"--config="+configPath,
 	)

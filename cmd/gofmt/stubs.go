@@ -7,12 +7,12 @@ package main
 // These are part of the dprint WASM ABI Schema Version 4.
 // See: https://dprint.dev/plugins/wasm/#wasm-imports
 
-// host_write_buffer tells the host to write data to the provided WASM memory
+// The host_write_buffer tells the host to write data to the provided WASM memory
 // address. This is used for low-level communication between plugin and host.
 // See: https://dprint.dev/plugins/wasm/#host_write_buffer
 //
 //go:wasmimport dprint host_write_buffer
-//goland:noinspection GoUnusedFunction,GoSnakeCaseUsage
+//goland:noinspection GoUnusedFunction, GoSnakeCaseUsage
 func host_write_buffer(ptr uint32)
 
 // host_format tells the host to format code using another plugin. This allows
@@ -35,13 +35,13 @@ func host_write_buffer(ptr uint32)
 //goland:noinspection GoUnusedFunction,GoSnakeCaseUsage,GoUnusedParameter
 func host_format(filePathPtr, filePathLen, rangeStart, rangeEnd, overridePtr, overrideLen, fileBytesPtr, fileBytesLen uint32) uint32
 
-// host_get_formatted_text tells the host to store the formatted text in its
+// The host_get_formatted_text tells the host to store the formatted text in its
 // local byte array and returns the byte length of that text. Call this after
 // host_format returns 1 (indicating successful formatting with changes).
 // See: https://dprint.dev/plugins/wasm/#host_get_formatted_text
 //
 //go:wasmimport dprint host_get_formatted_text
-//goland:noinspection GoUnusedFunction,GoSnakeCaseUsage
+//goland:noinspection GoUnusedFunction, GoSnakeCaseUsage
 func host_get_formatted_text() uint32
 
 // host_get_error_text tells the host to store the error text in its local
@@ -53,11 +53,11 @@ func host_get_formatted_text() uint32
 //goland:noinspection GoUnusedFunction,GoSnakeCaseUsage
 func host_get_error_text() uint32
 
-// host_has_cancelled checks if the host has cancelled the formatting request.
+// host_has_cancelled checks if the host has canceled the formatting request.
 // This allows long-running formatting operations to be interrupted gracefully.
-// Returns 1 if cancelled, 0 if still active.
+// Returns 1 if canceled, 0 if still active.
 // See: https://dprint.dev/plugins/wasm/#host_has_cancelled
 //
 //go:wasmimport dprint host_has_cancelled
-//goland:noinspection GoUnusedFunction,GoSnakeCaseUsage
+//goland:noinspection GoUnusedFunction, GoSnakeCaseUsage
 func host_has_cancelled() uint32

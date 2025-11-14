@@ -33,8 +33,8 @@ linters:
     ## disabled by default
     - asasalint # checks for pass []any as any in variadic func(...any)
     - asciicheck # checks that your code does not contain non-ASCII identifiers
-    - bidichk # checks for dangerous unicode character sequences
-    - bodyclose # checks whether HTTP response body is closed successfully
+    - bidichk # checks for dangerous Unicode character sequences
+    - bodyclose # checks whether the HTTP response body is closed successfully
     - canonicalheader # checks whether net/http.Header uses canonical header
     - copyloopvar # detects places where loop variables are copied (Go 1.22+)
     - cyclop # checks function and package cyclomatic complexity
@@ -86,7 +86,7 @@ linters:
     - recvcheck # checks for receiver type consistency
     - revive # fast, configurable, extensible, flexible, and beautiful linter for Go, drop-in replacement of golint
     - rowserrcheck # checks whether Err of rows is checked successfully
-    - sloglint # ensure consistent code style when using log/slog
+    - sloglint # ensure a consistent code style when using log/slog
     - spancheck # checks for mistakes with OpenTelemetry/Census spans
     - sqlclosecheck # checks that sql.Rows and sql.Stmt are closed
     - stylecheck # is a replacement for golint
@@ -148,6 +148,4 @@ issues:
   # Default: 3
   max-same-issues: 50
 
-
-
-version: 2
+version: "2"

@@ -1,3 +1,4 @@
+//goland:noinspection DuplicatedCode
 package main
 
 import (
@@ -6,12 +7,17 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/mridang/dprint-plugin-go/internal/wasm"
 	"github.com/wasmerio/wasmer-go/wasmer"
 )
 
+// TestWasm_Exports_And_OptionalCall verifies that the compiled Wasm module
+// exports all the expected functions for the dprint V2 ABI. It builds the
+// TinyGo Wasm, strips any start section (which wasmer-go doesn't support),
+// and instantiates it with no-op dprint host imports.
 func TestWasm_Exports_And_OptionalCall(t *testing.T) {
 	wasmBytes := buildTinyGoWasm(t)
-	wasmBytes = stripStartSection(wasmBytes)
+	wasmBytes = wasm.StripStartSection(wasmBytes)
 
 	engine := wasmer.NewEngine()
 	store := wasmer.NewStore(engine)
@@ -85,13 +91,15 @@ func TestWasm_Exports_And_OptionalCall(t *testing.T) {
 	}
 }
 
+// buildTinyGoWasm compiles the package in the current directory to a
+// Wasm module using TinyGo.
 func buildTinyGoWasm(t *testing.T) []byte {
 	t.Helper()
 	if _, err := exec.LookPath("tinygo"); err != nil {
 		t.Fatalf("tinygo not found in PATH: %v", err)
 	}
 	dir := t.TempDir()
-	out := filepath.Join(dir, "dprint.wasm")
+	out := filepath.Join(dir, "shfmt.wasm")
 	cmd := exec.Command(
 		"tinygo", "build",
 		"-o", out,
@@ -99,7 +107,7 @@ func buildTinyGoWasm(t *testing.T) []byte {
 		"-scheduler=none",
 		"-no-debug",
 		"-opt=2",
-		"main.go",
+		".", // Build the package in the current directory
 	)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -113,6 +121,8 @@ func buildTinyGoWasm(t *testing.T) []byte {
 	return bin
 }
 
+// registerNoOpDprint registers stub implementations of the host functions
+// that dprint provides to the Wasm module.
 func registerNoOpDprint(t *testing.T, store *wasmer.Store, imports *wasmer.ImportObject) {
 	t.Helper()
 	newFunc := func(params, results []wasmer.ValueKind, f func([]wasmer.Value) ([]wasmer.Value, error)) *wasmer.Function {
@@ -162,65 +172,4 @@ func registerNoOpDprint(t *testing.T, store *wasmer.Store, imports *wasmer.Impor
 			),
 		},
 	)
-}
-
-func stripStartSection(b []byte) []byte {
-	if len(b) < 8 {
-		return b
-	}
-	header := b[:8]
-	rest := b[8:]
-
-	var out []byte
-	out = append(out, header...)
-
-	for off := 0; off < len(rest); {
-		id := rest[off]
-		off++
-		size, n := lebReadU32(rest[off:])
-		if n == 0 || off+n+int(size) > len(rest) {
-			return b
-		}
-		off += n
-		bodyStart := off
-		bodyEnd := off + int(size)
-
-		if id != 8 {
-			out = append(out, id)
-			out = append(out, lebWriteU32(size)...)
-			out = append(out, rest[bodyStart:bodyEnd]...)
-		}
-		off = bodyEnd
-	}
-	return out
-}
-
-func lebReadU32(b []byte) (uint32, int) {
-	var x uint32
-	var s uint
-	for i := 0; i < len(b) && i < 5; i++ {
-		c := b[i]
-		x |= uint32(c&0x7f) << s
-		if c&0x80 == 0 {
-			return x, i + 1
-		}
-		s += 7
-	}
-	return 0, 0
-}
-
-func lebWriteU32(x uint32) []byte {
-	var out []byte
-	for {
-		c := byte(x & 0x7f)
-		x >>= 7
-		if x != 0 {
-			c |= 0x80
-		}
-		out = append(out, c)
-		if x == 0 {
-			break
-		}
-	}
-	return out
 }

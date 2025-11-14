@@ -8,7 +8,7 @@
     [
       "@semantic-release/exec",
       {
-        "prepareCmd": "echo '${nextRelease.version}' > VERSION && make build"
+        "prepareCmd": "echo '${nextRelease.version}' > cmd/gofmt/VERSION && echo '${nextRelease.version}' > cmd/shfmt/VERSION && make build"
       }
     ],
     [
@@ -16,8 +16,7 @@
       {
         "assets": [
           {
-            "path": "build/dprint.wasm",
-            "label": "dprint.wasm"
+            "path": "build/*.wasm"
           }
         ]
       }
@@ -27,7 +26,8 @@
       {
         "message": "chore(release): ${nextRelease.version} [skip ci]\\n\\n${nextRelease.notes}",
         "assets": [
-          "VERSION"
+          "cmd/gofmt/VERSION",
+          "cmd/shfmt/VERSION"
         ]
       }
     ]

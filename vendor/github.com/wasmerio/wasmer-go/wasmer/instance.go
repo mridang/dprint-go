@@ -19,13 +19,12 @@ type Instance struct {
 // Note:️ Instantiating a module may return TrapError if the module's
 // start function traps.
 //
-//   wasmBytes := []byte(`...`)
-//   engine := wasmer.NewEngine()
-//   store := wasmer.NewStore(engine)
-//   module, err := wasmer.NewModule(store, wasmBytes)
-//   importObject := wasmer.NewImportObject()
-//   instance, err := wasmer.NewInstance(module, importObject)
-//
+//	wasmBytes := []byte(`...`)
+//	engine := wasmer.NewEngine()
+//	store := wasmer.NewStore(engine)
+//	module, err := wasmer.NewModule(store, wasmBytes)
+//	importObject := wasmer.NewImportObject()
+//	instance, err := wasmer.NewInstance(module, importObject)
 func NewInstance(module *Module, imports *ImportObject) (*Instance, error) {
 	var traps *C.wasm_trap_t
 	externs, err := imports.intoInner(module)

@@ -1,7 +1,0 @@
-{
-  "go-noop": {},
-  "includes": ["**/*.go"],
-  "plugins": [
-    "./build/dprint.wasm"
-  ]
-}

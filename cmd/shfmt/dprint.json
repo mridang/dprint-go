@@ -1,0 +1,9 @@
+{
+  "includes": [
+    "**/*.sh",
+    "**/*.bash"
+  ],
+  "plugins": [
+    "./build/shfmt.wasm"
+  ]
+}

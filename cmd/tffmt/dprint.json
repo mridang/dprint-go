@@ -1,0 +1,8 @@
+{
+  "includes": [
+    "**/*.tf"
+  ],
+  "plugins": [
+    "./build/tffmt.wasm"
+  ]
+}

@@ -1,10 +1,10 @@
-.PHONY: default build build-gofmt build-shfmt lint test test-gofmt test-shfmt vendor clean format
+.PHONY: default build build-gofmt build-shfmt build-tffmt lint test test-gofmt test-shfmt test-tffmt vendor clean format
 
 export GO111MODULE=on
 
 default: build
 
-build: build-gofmt build-shfmt
+build: build-gofmt build-shfmt build-tffmt
 
 build-gofmt:
 	mkdir -p build
@@ -18,12 +18,18 @@ build-shfmt:
 	go run ./cmd/addstart/main.go build/shfmt.wasm build/shfmt-fixed.wasm
 	mv build/shfmt-fixed.wasm build/shfmt.wasm
 
+build-tffmt:
+	mkdir -p build
+	tinygo build -o=build/tffmt.wasm -target=wasm-unknown -scheduler=none -no-debug -opt=2 ./cmd/tffmt
+	go run ./cmd/addstart/main.go build/tffmt.wasm build/tffmt-fixed.wasm
+	mv build/tffmt-fixed.wasm build/tffmt.wasm
+
 lint:
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	golangci-lint run --verbose
 
 # Force module mode and CGO so wasmer-go finds its packaged libs.
-test: test-gofmt test-shfmt
+test: test-gofmt test-shfmt test-tffmt
 
 # Run tests only in gofmt command package
 test-gofmt:
@@ -32,6 +38,10 @@ test-gofmt:
 # Run tests only in shfmt command package
 test-shfmt:
 	GOFLAGS= CGO_ENABLED=1 go test -mod=mod -v=true -cover=true -count=1 ./cmd/shfmt
+
+# Run tests only in tffmt command package
+test-tffmt:
+	GOFLAGS= CGO_ENABLED=1 go test -mod=mod -v=true -cover=true -count=1 ./cmd/tffmt
 
 vendor:
 	go mod vendor

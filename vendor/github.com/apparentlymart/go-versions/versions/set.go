@@ -65,7 +65,7 @@ func (s Set) AllRequested() Set {
 //
 // This method is equivalent to the following set operations:
 //
-//     versions.Union(s.AllRequested(), s.Intersection(versions.Released))
+//	versions.Union(s.AllRequested(), s.Intersection(versions.Released))
 func (s Set) WithoutUnrequestedPrereleases() Set {
 	return Union(s.AllRequested(), Released.Intersection(s))
 }

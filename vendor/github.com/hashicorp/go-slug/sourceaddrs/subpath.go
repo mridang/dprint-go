@@ -67,9 +67,10 @@ func subPathAsLocalSource(p string) LocalSource {
 // its package address and its sub-path portion.
 //
 // For example:
-//   dom.com/path/?q=p               => "dom.com/path/?q=p", ""
-//   proto://dom.com/path//*?q=p     => "proto://dom.com/path?q=p", "*"
-//   proto://dom.com/path//path2?q=p => "proto://dom.com/path?q=p", "path2"
+//
+//	dom.com/path/?q=p               => "dom.com/path/?q=p", ""
+//	proto://dom.com/path//*?q=p     => "proto://dom.com/path?q=p", "*"
+//	proto://dom.com/path//path2?q=p => "proto://dom.com/path?q=p", "path2"
 //
 // This function DOES NOT validate or normalize the sub-path. Pass the second
 // return value to [normalizeSubpath] to check if it is valid and to obtain

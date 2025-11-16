@@ -55,7 +55,7 @@ func (error *Error) Error() string {
 
 // TrapError represents a trap produced during Wasm execution.
 //
-// See also
+// # See also
 //
 // Specification: https://webassembly.github.io/spec/core/intro/overview.html#trap
 type TrapError struct {

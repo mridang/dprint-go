@@ -1,3 +1,134 @@
+# dario.cat/mergo v1.0.1
+## explicit; go 1.13
+dario.cat/mergo
+# github.com/Masterminds/goutils v1.1.1
+## explicit
+github.com/Masterminds/goutils
+# github.com/Masterminds/semver/v3 v3.3.0
+## explicit; go 1.21
+github.com/Masterminds/semver/v3
+# github.com/Masterminds/sprig/v3 v3.3.0
+## explicit; go 1.21
+github.com/Masterminds/sprig/v3
+# github.com/agext/levenshtein v1.2.3
+## explicit
+github.com/agext/levenshtein
+# github.com/apparentlymart/go-textseg/v15 v15.0.0
+## explicit; go 1.16
+github.com/apparentlymart/go-textseg/v15/textseg
+# github.com/apparentlymart/go-versions v1.0.2
+## explicit; go 1.14
+github.com/apparentlymart/go-versions/versions
+github.com/apparentlymart/go-versions/versions/constraints
+# github.com/armon/go-radix v1.0.0
+## explicit
+github.com/armon/go-radix
+# github.com/bgentry/speakeasy v0.1.0
+## explicit
+github.com/bgentry/speakeasy
+# github.com/fatih/color v1.18.0
+## explicit; go 1.17
+github.com/fatih/color
+# github.com/google/go-cmp v0.7.0
+## explicit; go 1.21
+github.com/google/go-cmp/cmp
+github.com/google/go-cmp/cmp/internal/diff
+github.com/google/go-cmp/cmp/internal/flags
+github.com/google/go-cmp/cmp/internal/function
+github.com/google/go-cmp/cmp/internal/value
+# github.com/google/uuid v1.6.0
+## explicit
+github.com/google/uuid
+# github.com/hashicorp/cli v1.1.7
+## explicit; go 1.20
+github.com/hashicorp/cli
+# github.com/hashicorp/errwrap v1.1.0
+## explicit
+github.com/hashicorp/errwrap
+# github.com/hashicorp/go-multierror v1.1.1
+## explicit; go 1.13
+github.com/hashicorp/go-multierror
+# github.com/hashicorp/go-slug v0.16.3
+## explicit; go 1.20
+github.com/hashicorp/go-slug
+github.com/hashicorp/go-slug/internal/ignorefiles
+github.com/hashicorp/go-slug/internal/unpackinfo
+github.com/hashicorp/go-slug/sourceaddrs
+github.com/hashicorp/go-slug/sourcebundle
+# github.com/hashicorp/go-version v1.7.0
+## explicit
+github.com/hashicorp/go-version
+# github.com/hashicorp/hcl/v2 v2.24.0
+## explicit; go 1.23.0
+github.com/hashicorp/hcl/v2
+github.com/hashicorp/hcl/v2/ext/customdecode
+github.com/hashicorp/hcl/v2/ext/dynblock
+github.com/hashicorp/hcl/v2/ext/typeexpr
+github.com/hashicorp/hcl/v2/gohcl
+github.com/hashicorp/hcl/v2/hcldec
+github.com/hashicorp/hcl/v2/hclparse
+github.com/hashicorp/hcl/v2/hclsyntax
+github.com/hashicorp/hcl/v2/hclwrite
+github.com/hashicorp/hcl/v2/json
+# github.com/hashicorp/terraform v1.13.5
+## explicit; go 1.24.5
+github.com/hashicorp/terraform/internal/addrs
+github.com/hashicorp/terraform/internal/configs
+github.com/hashicorp/terraform/internal/configs/configschema
+github.com/hashicorp/terraform/internal/configs/configtesting
+github.com/hashicorp/terraform/internal/dag
+github.com/hashicorp/terraform/internal/depsfile
+github.com/hashicorp/terraform/internal/didyoumean
+github.com/hashicorp/terraform/internal/experiments
+github.com/hashicorp/terraform/internal/getmodules/moduleaddrs
+github.com/hashicorp/terraform/internal/getproviders/providerreqs
+github.com/hashicorp/terraform/internal/lang/blocktoattr
+github.com/hashicorp/terraform/internal/lang/format
+github.com/hashicorp/terraform/internal/lang/langrefs
+github.com/hashicorp/terraform/internal/lang/marks
+github.com/hashicorp/terraform/internal/replacefile
+github.com/hashicorp/terraform/internal/tfdiags
+github.com/hashicorp/terraform/version
+# github.com/hashicorp/terraform-registry-address v0.3.0
+## explicit; go 1.23.0
+github.com/hashicorp/terraform-registry-address
+# github.com/hashicorp/terraform-svchost v0.1.1
+## explicit; go 1.19
+github.com/hashicorp/terraform-svchost
+# github.com/huandu/xstrings v1.5.0
+## explicit; go 1.12
+github.com/huandu/xstrings
+# github.com/mattn/go-colorable v0.1.14
+## explicit; go 1.18
+github.com/mattn/go-colorable
+# github.com/mattn/go-isatty v0.0.20
+## explicit; go 1.15
+github.com/mattn/go-isatty
+# github.com/mitchellh/copystructure v1.2.0
+## explicit; go 1.15
+github.com/mitchellh/copystructure
+# github.com/mitchellh/go-wordwrap v1.0.1
+## explicit; go 1.14
+github.com/mitchellh/go-wordwrap
+# github.com/mitchellh/reflectwalk v1.0.2
+## explicit
+github.com/mitchellh/reflectwalk
+# github.com/posener/complete v1.2.3
+## explicit; go 1.13
+github.com/posener/complete
+github.com/posener/complete/cmd
+github.com/posener/complete/cmd/install
+# github.com/shopspring/decimal v1.4.0
+## explicit; go 1.10
+github.com/shopspring/decimal
+# github.com/spf13/afero v1.9.5
+## explicit; go 1.16
+github.com/spf13/afero
+github.com/spf13/afero/internal/common
+github.com/spf13/afero/mem
+# github.com/spf13/cast v1.7.0
+## explicit; go 1.19
+github.com/spf13/cast
 # github.com/wasmerio/wasmer-go v1.0.4
 ## explicit; go 1.14
 github.com/wasmerio/wasmer-go/wasmer
@@ -6,6 +137,69 @@ github.com/wasmerio/wasmer-go/wasmer/packaged/lib
 github.com/wasmerio/wasmer-go/wasmer/packaged/lib/darwin-amd64
 github.com/wasmerio/wasmer-go/wasmer/packaged/lib/linux-aarch64
 github.com/wasmerio/wasmer-go/wasmer/packaged/lib/linux-amd64
+# github.com/zclconf/go-cty v1.16.3
+## explicit; go 1.18
+github.com/zclconf/go-cty/cty
+github.com/zclconf/go-cty/cty/convert
+github.com/zclconf/go-cty/cty/ctystrings
+github.com/zclconf/go-cty/cty/function
+github.com/zclconf/go-cty/cty/function/stdlib
+github.com/zclconf/go-cty/cty/gocty
+github.com/zclconf/go-cty/cty/json
+github.com/zclconf/go-cty/cty/set
+# golang.org/x/crypto v0.41.0
+## explicit; go 1.23.0
+golang.org/x/crypto/bcrypt
+golang.org/x/crypto/blowfish
+golang.org/x/crypto/pbkdf2
+golang.org/x/crypto/scrypt
+# golang.org/x/mod v0.26.0
+## explicit; go 1.23.0
+golang.org/x/mod/semver
+golang.org/x/mod/sumdb/dirhash
+# golang.org/x/net v0.43.0
+## explicit; go 1.23.0
+golang.org/x/net/idna
+# golang.org/x/sync v0.16.0
+## explicit; go 1.23.0
+golang.org/x/sync/errgroup
+# golang.org/x/sys v0.35.0
+## explicit; go 1.23.0
+golang.org/x/sys/unix
+golang.org/x/sys/windows
+# golang.org/x/text v0.28.0
+## explicit; go 1.23.0
+golang.org/x/text/cases
+golang.org/x/text/internal
+golang.org/x/text/internal/language
+golang.org/x/text/internal/language/compact
+golang.org/x/text/internal/tag
+golang.org/x/text/language
+golang.org/x/text/runes
+golang.org/x/text/secure/bidirule
+golang.org/x/text/transform
+golang.org/x/text/unicode/bidi
+golang.org/x/text/unicode/norm
+# golang.org/x/tools v0.35.0
+## explicit; go 1.23.0
+golang.org/x/tools/cmd/stringer
+golang.org/x/tools/go/gcexportdata
+golang.org/x/tools/go/packages
+golang.org/x/tools/go/types/objectpath
+golang.org/x/tools/go/types/typeutil
+golang.org/x/tools/internal/aliases
+golang.org/x/tools/internal/event
+golang.org/x/tools/internal/event/core
+golang.org/x/tools/internal/event/keys
+golang.org/x/tools/internal/event/label
+golang.org/x/tools/internal/gcimporter
+golang.org/x/tools/internal/gocommand
+golang.org/x/tools/internal/packagesinternal
+golang.org/x/tools/internal/pkgbits
+golang.org/x/tools/internal/stdlib
+golang.org/x/tools/internal/typeparams
+golang.org/x/tools/internal/typesinternal
+golang.org/x/tools/internal/versions
 # mvdan.cc/sh/v3 v3.12.0
 ## explicit; go 1.23.0
 mvdan.cc/sh/v3/fileutil

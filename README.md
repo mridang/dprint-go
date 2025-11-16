@@ -1,10 +1,10 @@
 # dprint-plugin-goat
 
-**dprint-plugin-goat** provides two formatter plugins for dprint: one for Go files using Go's canonical formatter, and one for shell scripts using shfmt. Both are compiled to WebAssembly with TinyGo and plug into dprint like any other plugin.
+**dprint-plugin-goat** provides three formatter plugins for dprint: one for Go files using Go's canonical formatter, one for shell scripts using shfmt, and one for Terraform/HCL files using HashiCorp's hclwrite. All are compiled to WebAssembly with TinyGo and plug into dprint like any other plugin.
 
-##### Why ?
+##### Why?
 
-Using dprint plugins lets you keep a single, consistent formatting workflow across polyglot repos. The gofmt plugin applies `go/format` so your Go code follows the exact same rules as `gofmt`, while the shfmt plugin formats shell scripts with the same power as the standalone shfmt tool.
+Using dprint plugins lets you keep a single, consistent formatting workflow across polyglot repos. The gofmt plugin applies `go/format` so your Go code follows the exact same rules as `gofmt`, the shfmt plugin formats shell scripts with the same power as the standalone shfmt tool, and the tffmt plugin formats Terraform and HCL files using the same logic as `terraform fmt`.
 
 ## Usage
 
@@ -58,6 +58,31 @@ dprint fmt --log-level=debug
 #### Options
 
 This plugin mirrors `shfmt` and does not add custom options. If you pass an override config from dprint, it is accepted but ignored.
+
+### tffmt
+
+Add the tffmt plugin to your **dprint** configuration to format Terraform files.
+
+```json
+{
+  "$schema": "https://dprint.dev/schemas/v0.json",
+  "plugins": [
+    "https://github.com/mridang/dprint-goat/releases/download/v1.0.0/tffmt.wasm"
+  ],
+  "includes": [
+    "**/*.tf"
+  ]
+}
+```
+
+```bash
+dprint fmt --log-level=debug
+```
+
+#### Options
+
+This plugin mirrors `tf fmt` and does not add custom options. If you pass an override config from dprint, it is accepted but ignored.
+
 
 ## Caveats
 

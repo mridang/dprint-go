@@ -8,7 +8,7 @@
     [
       "@semantic-release/exec",
       {
-        "prepareCmd": "echo '${nextRelease.version}' > cmd/gofmt/VERSION && echo '${nextRelease.version}' > cmd/shfmt/VERSION && make build"
+        "prepareCmd": "echo '${nextRelease.version}' > cmd/gofmt/VERSION && echo '${nextRelease.version}' > cmd/shfmt/VERSION && echo '${nextRelease.version}' > cmd/tffmt/VERSION && make build"
       }
     ],
     [
@@ -27,7 +27,8 @@
         "message": "chore(release): ${nextRelease.version} [skip ci]\\n\\n${nextRelease.notes}",
         "assets": [
           "cmd/gofmt/VERSION",
-          "cmd/shfmt/VERSION"
+          "cmd/shfmt/VERSION",
+          "cmd/tffmt/VERSION"
         ]
       }
     ]

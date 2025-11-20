@@ -19,8 +19,8 @@ const (
 
 // Strings returns the CompilerKind as a string.
 //
-//	CRANELIFT.String() // "cranelift"
-//	LLVM.String() // "llvm"
+//   CRANELIFT.String() // "cranelift"
+//   LLVM.String() // "llvm"
 func (self CompilerKind) String() string {
 	switch self {
 	case CRANELIFT:
@@ -38,7 +38,7 @@ func (self CompilerKind) String() string {
 // IsCompilerAvailable checks that the given compiler is available
 // in this current version of `wasmer-go`.
 //
-//	IsCompilerAvailable(CRANELIFT)
+//   IsCompilerAvailable(CRANELIFT)
 func IsCompilerAvailable(compiler CompilerKind) bool {
 	return bool(C.wasmer_is_compiler_available(uint32(C.wasmer_compiler_t(compiler))))
 }
@@ -62,8 +62,8 @@ const (
 
 // Strings returns the EngineKind as a string.
 //
-//	JIT.String() // "jit"
-//	NATIVE.String() // "native"
+//   JIT.String() // "jit"
+//   NATIVE.String() // "native"
 func (self EngineKind) String() string {
 	switch self {
 	case UNIVERSAL:
@@ -78,7 +78,7 @@ func (self EngineKind) String() string {
 // IsEngineAvailable checks that the given engine is available in this
 // current version of `wasmer-go`.
 //
-//	IsEngineAvailable(UNIVERSAL)
+//   IsEngineAvailable(UNIVERSAL)
 func IsEngineAvailable(engine EngineKind) bool {
 	return bool(C.wasmer_is_engine_available(uint32(C.wasmer_engine_t(engine))))
 }
@@ -90,7 +90,7 @@ type Config struct {
 
 // NewConfig instantiates and returns a new Config.
 //
-//	config := NewConfig()
+//   config := NewConfig()
 func NewConfig() *Config {
 	config := C.wasm_config_new()
 
@@ -105,8 +105,8 @@ func (self *Config) inner() *C.wasm_config_t {
 
 // UseNativeEngine sets the engine to Universal in the configuration.
 //
-//	config := NewConfig()
-//	config.UseUniversalEngine()
+//   config := NewConfig()
+//   config.UseUniversalEngine()
 //
 // This method might fail if the Universal engine isn't
 // available. Check `IsEngineAvailable` to learn more.
@@ -122,8 +122,8 @@ func (self *Config) UseUniversalEngine() *Config {
 
 // UseDylibEngine sets the engine to Dylib in the configuration.
 //
-//	config := NewConfig()
-//	config.UseDylibEngine()
+//   config := NewConfig()
+//   config.UseDylibEngine()
 //
 // This method might fail if the Dylib engine isn't available. Check
 // `IsEngineAvailable` to learn more.
@@ -151,8 +151,8 @@ func (self *Config) UseNativeEngine() *Config {
 
 // UseCraneliftCompiler sets the compiler to Cranelift in the configuration.
 //
-//	config := NewConfig()
-//	config.UseCraneliftCompiler()
+//   config := NewConfig()
+//   config.UseCraneliftCompiler()
 //
 // This method might fail if the Cranelift compiler isn't
 // available. Check `IsCompilerAvailable` to learn more.
@@ -168,8 +168,8 @@ func (self *Config) UseCraneliftCompiler() *Config {
 
 // UseLLVMCompiler sets the compiler to LLVM in the configuration.
 //
-//	config := NewConfig()
-//	config.UseLLVMCompiler()
+//   config := NewConfig()
+//   config.UseLLVMCompiler()
 //
 // This method might fail if the LLVM compiler isn't available. Check
 // `IsCompilerAvailable` to learn more.
@@ -186,8 +186,8 @@ func (self *Config) UseLLVMCompiler() *Config {
 // UseSinglepassCompiler sets the compiler to Singlepass in the
 // configuration.
 //
-//	config := NewConfig()
-//	config.UseSinglepassCompiler()
+//   config := NewConfig()
+//   config.UseSinglepassCompiler()
 //
 // This method might fail if the Singlepass compiler isn't
 // available. Check `IsCompilerAvailable` to learn more.
@@ -203,12 +203,12 @@ func (self *Config) UseSinglepassCompiler() *Config {
 
 // Use a specific target for doing cross-compilation.
 //
-//	triple, _ := NewTriple("aarch64-unknown-linux-gnu")
-//	cpuFeatures := NewCpuFeatures()
-//	target := NewTarget(triple, cpuFeatures)
+//   triple, _ := NewTriple("aarch64-unknown-linux-gnu")
+//   cpuFeatures := NewCpuFeatures()
+//   target := NewTarget(triple, cpuFeatures)
 //
-//	config := NewConfig()
-//	config.UseTarget(target)
+//   config := NewConfig()
+//   config.UseTarget(target)
 func (self *Config) UseTarget(target *Target) *Config {
 	C.wasm_config_set_target(self.inner(), target.inner())
 

@@ -18,10 +18,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: 'go.mod'
 
@@ -37,6 +37,6 @@ jobs:
           npm install --global @semantic-release/exec
 
       - name: Run semantic-release
-        uses: mridang/action-semantic-release@v1.0.0
+        uses: mridang/action-semantic-release@v2.1.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}

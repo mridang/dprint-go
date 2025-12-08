@@ -1,12 +1,36 @@
-// file: vendor/cuelang.org/go/cue/literal/num.go
+// Copyright 2020 CUE Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package literal
 
 import (
 	"cuelang.org/go/cue/errors"
 	"cuelang.org/go/cue/token"
+	"github.com/cockroachdb/apd/v3"
 )
 
+// We avoid cuelang.org/go/internal.Context as that would be an import cycle.
+var baseContext apd.Context
+
+func init() {
+	baseContext = apd.BaseContext
+	baseContext.Precision = 34
+}
+
 // NumInfo contains information about a parsed numbers.
+//
+// Reusing a NumInfo across parses may avoid memory allocations.
 type NumInfo struct {
 	pos token.Pos
 	src string
@@ -22,18 +46,57 @@ type NumInfo struct {
 	err     error
 }
 
+// String returns a canonical string representation of the number so that
+// it can be parsed with math.Float.Parse.
 func (p *NumInfo) String() string {
-	return string(p.buf)
+	if len(p.buf) > 0 && p.base == 10 && p.mul == 0 {
+		return string(p.buf)
+	}
+	var d apd.Decimal
+	_ = p.decimal(&d)
+	return d.String()
 }
 
+type decimal = apd.Decimal
+
+// Decimal is for internal use.
+func (p *NumInfo) Decimal(v *decimal) error {
+	return p.decimal(v)
+}
+
+func (p *NumInfo) decimal(v *apd.Decimal) error {
+	if p.base != 10 {
+		_, _, _ = v.SetString("0")
+		b := p.buf
+		if p.buf[0] == '-' {
+			v.Negative = p.neg
+			b = p.buf[1:]
+		}
+		v.Coeff.SetString(string(b), int(p.base))
+		return nil
+	}
+	_ = v.UnmarshalText(p.buf)
+	if p.mul != 0 {
+		_, _ = baseContext.Mul(v, v, mulToRat[p.mul])
+		cond, _ := baseContext.RoundToIntegralExact(v, v)
+		if cond.Inexact() {
+			return p.errorf("number cannot be represented as int")
+		}
+	}
+	return nil
+}
+
+// Multiplier reports which multiplier was used in an integral number.
 func (p *NumInfo) Multiplier() Multiplier {
 	return p.mul
 }
 
+// IsInt reports whether the number is an integral number.
 func (p *NumInfo) IsInt() bool {
 	return !p.isFloat
 }
 
+// ParseNum parses s and populates NumInfo with the result.
 func ParseNum(s string, n *NumInfo) error {
 	*n = NumInfo{pos: n.pos, src: s, buf: n.buf[:0]}
 	if !n.next() {
@@ -72,6 +135,7 @@ func (p *NumInfo) errorf(format string, args ...interface{}) error {
 	return errors.Newf(p.pos, format, args...)
 }
 
+// A Multiplier indicates a multiplier indicator used in the literal.
 type Multiplier byte
 
 const (
@@ -134,7 +198,7 @@ func (p *NumInfo) digitVal(ch byte) (d int) {
 	case 'A' <= ch && ch <= 'F':
 		d = int(ch - 'A' + 10)
 	default:
-		return 16
+		return 16 // larger than any legal digit val
 	}
 	return d
 }
@@ -168,27 +232,35 @@ func (p *NumInfo) scanNumber(seenDecimalPoint bool) error {
 	}
 
 	if p.ch == '0' {
+		// int or float
 		p.next()
 		switch p.ch {
 		case 'x', 'X':
 			p.base = 16
+			// hexadecimal int
 			p.next()
 			if !p.scanMantissa(16) {
+				// only scanned "0x" or "0X"
 				return p.errorf("illegal hexadecimal number %q", p.src)
 			}
 		case 'b':
 			p.base = 2
+			// binary int
 			p.next()
 			if !p.scanMantissa(2) {
+				// only scanned "0b"
 				return p.errorf("illegal binary number %q", p.src)
 			}
 		case 'o':
 			p.base = 8
+			// octal int
 			p.next()
 			if !p.scanMantissa(8) {
+				// only scanned "0o"
 				return p.errorf("illegal octal number %q", p.src)
 			}
 		default:
+			// int (base 8 or 10) or float
 			p.scanMantissa(8)
 			if p.ch == '8' || p.ch == '9' {
 				p.scanMantissa(10)
@@ -212,6 +284,7 @@ func (p *NumInfo) scanNumber(seenDecimalPoint bool) error {
 		goto exit
 	}
 
+	// decimal int or float
 	if !p.scanMantissa(10) {
 		return p.errorf("illegal number start %q", p.src)
 	}
@@ -225,9 +298,8 @@ fraction:
 
 exponent:
 	switch p.ch {
-	case 'K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y':
-		// REPLACEMENT: Use switch instead of map lookup to avoid static init
-		p.mul = charToMultiplier(p.ch)
+	case 'K', 'M', 'G', 'T', 'P':
+		p.mul = charToMul[p.ch]
 		p.next()
 		if p.ch == 'i' {
 			p.mul |= mulBin
@@ -235,45 +307,20 @@ exponent:
 		} else {
 			p.mul |= mulDec
 		}
+		var v apd.Decimal
 		p.isFloat = false
-		return nil
+		return p.decimal(&v)
 
-	case 'e':
-		// lowercase e is treated as exponent start, handled below
-		fallthrough
-
-	// Note: 'E' is handled in the case above because 'E' (Exa) clashes with E notation.
-	// In the original code 'E' was in the map.
-	// The original logic checked the map first.
-	// If p.ch is 'E', it enters the case above.
-	// However, if it's meant to be an exponent, we need to be careful.
-	// Logic: CUE multipliers are usually suffix only.
-	// If we are here, we might be parsing an exponent.
-	// The original code check: case 'K', 'M', ...: p.mul = map[...]
-	// BUT 'e' and 'E' were also checked in the exponent block below in original.
-	// Actually, looking at original code: 'E' is in charToMul (Exa).
-	// If it matches a multiplier, it returns early.
-	// If it hits case 'e', 'E' below, it parses exponent.
-	// This implies an ambiguity in CUE: 1E can be 1 Exa or 1E(incomplete).
-	// For formatting purposes, we stick to the original logic precedence.
-
-	// Wait, strictly speaking, standard float parsing handles 'E' as exponent.
-	// The original code had 'E' in the map for Exa.
-	// Let's stick to the structure:
-
-	default:
-		// if it was 'e', we fall through to here
-		if p.ch == 'e' || p.ch == 'E' {
-			p.isFloat = true
+	case 'e', 'E':
+		p.isFloat = true
+		p.next()
+		p.buf = append(p.buf, 'e')
+		if p.ch == '-' || p.ch == '+' {
+			p.buf = append(p.buf, p.ch)
 			p.next()
-			p.buf = append(p.buf, 'e') // normalize to e
-			if p.ch == '-' || p.ch == '+' {
-				p.buf = append(p.buf, p.ch)
-				p.next()
-			}
-			if !p.scanMantissa(10) {
-				return p.errorf("illegal exponent %q", p.src)
-			}
+		}
+		if !p.scanMantissa(10) {
+			return p.errorf("illegal exponent %q", p.src)
 		}
 	}
 
@@ -281,17 +328,34 @@ exit:
 	return nil
 }
 
-// Replacement for the global map charToMul to avoid static initialization
-func charToMultiplier(c byte) Multiplier {
-	switch c {
-	case 'K': return mul1
-	case 'M': return mul2
-	case 'G': return mul3
-	case 'T': return mul4
-	case 'P': return mul5
-	case 'E': return mul6
-	case 'Z': return mul7
-	case 'Y': return mul8
+var charToMul = map[byte]Multiplier{
+	'K': mul1,
+	'M': mul2,
+	'G': mul3,
+	'T': mul4,
+	'P': mul5,
+	'E': mul6,
+	'Z': mul7,
+	'Y': mul8,
+}
+
+var mulToRat = map[Multiplier]*apd.Decimal{}
+
+func init() {
+	d := apd.New(1, 0)
+	b := apd.New(1, 0)
+	dm := apd.New(1000, 0)
+	bm := apd.New(1024, 0)
+
+	c := apd.BaseContext
+	for i := Multiplier(1); int(i) < len(charToMul); i++ {
+		// TODO: may we write to one of the sources?
+		var bn, dn apd.Decimal
+		_, _ = c.Mul(&dn, d, dm)
+		d = &dn
+		_, _ = c.Mul(&bn, b, bm)
+		b = &bn
+		mulToRat[mulDec|i] = d
+		mulToRat[mulBin|i] = b
 	}
-	return 0
 }

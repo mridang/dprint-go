@@ -16,6 +16,7 @@ package format
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"text/tabwriter"
 
@@ -248,6 +249,7 @@ func (p *printer) Print(v interface{}) {
 		return
 
 	default:
+		fmt.Fprintf(os.Stderr, "print: unsupported argument %v (%T)\n", x, x)
 		panic("go/printer type")
 	}
 

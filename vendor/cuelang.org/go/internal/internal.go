@@ -1,11 +1,10 @@
-// file: vendor/cuelang.org/go/internal/internal.go
 // Copyright 2018 The CUE Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,37 +22,71 @@ package internal
 import (
 	"bufio"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/cockroachdb/apd/v3"
 
 	"cuelang.org/go/cue/ast"
 	"cuelang.org/go/cue/token"
 )
 
 // A Decimal is an arbitrary-precision binary-coded decimal number.
-// STUBBED: Removed apd dependency for formatting/wasm
-type Decimal = struct{}
+//
+// Right now Decimal is aliased to apd.Decimal. This may change in the future.
+type Decimal = apd.Decimal
 
 // Context wraps apd.Context for CUE's custom logic.
-// STUBBED: Removed apd dependency for formatting/wasm
-type Context struct{}
+//
+// Note that it avoids pointers to make it easier to make copies.
+type Context struct {
+	apd.Context
+}
 
 // WithPrecision mirrors upstream, but returning our type without a pointer.
 func (c Context) WithPrecision(p uint32) Context {
+	c.Context = *c.Context.WithPrecision(p)
 	return c
 }
 
-func (c Context) Quo(d, x, y *Decimal) (interface{}, error) {
-	return nil, nil
+// apd/v2 used to call Reduce on the result of Quo and Rem,
+// so that the operations always trimmed all but one trailing zeros.
+// apd/v3 does not do that at all.
+// For now, get the old behavior back by calling Reduce ourselves.
+// Note that v3's Reduce also removes all trailing zeros,
+// whereas v2's Reduce would leave ".0" behind.
+// Get that detail back as well, to consistently show floats with decimal points.
+//
+// TODO: Rather than reducing all trailing zeros,
+// we should keep a number of zeros that makes sense given the operation.
+
+func reduceKeepingFloats(d *apd.Decimal) {
+	oldExponent := d.Exponent
+	d.Reduce(d)
+	// If the decimal had decimal places, like "3.000" and "5.000E+5",
+	// Reduce gives us "3" and "5E+5", but we want "3.0" and "5.0E+5".
+	if oldExponent < 0 && d.Exponent >= 0 {
+		d.Exponent--
+		// TODO: we can likely make the NewBigInt(10) a static global to reduce allocs
+		d.Coeff.Mul(&d.Coeff, apd.NewBigInt(10))
+	}
 }
 
-func (c Context) Sqrt(d, x *Decimal) (interface{}, error) {
-	return nil, nil
+func (c Context) Quo(d, x, y *apd.Decimal) (apd.Condition, error) {
+	res, err := c.Context.Quo(d, x, y)
+	reduceKeepingFloats(d)
+	return res, err
+}
+
+func (c Context) Sqrt(d, x *apd.Decimal) (apd.Condition, error) {
+	res, err := c.Context.Sqrt(d, x)
+	reduceKeepingFloats(d)
+	return res, err
 }
 
 // BaseContext is used as CUE's default context for arbitrary-precision decimals.
-// STUBBED: Zero-value init for WASM optimization
-var BaseContext = Context{}
+var BaseContext = Context{*apd.BaseContext.WithPrecision(34)}
 
 // EvaluatorVersion is declared here so it can be used everywhere without import cycles,
 // but the canonical documentation lives at [cuelang.org/go/cue/cuecontext.EvalVersion].
@@ -277,4 +310,9 @@ func SetConstraint(f *ast.Field, t token.Token) {
 	} else {
 		f.Optional = token.Blank.Pos()
 	}
+}
+
+// GenPath reports the directory in which to store generated files.
+func GenPath(root string) string {
+	return filepath.Join(root, "cue.mod", "gen")
 }

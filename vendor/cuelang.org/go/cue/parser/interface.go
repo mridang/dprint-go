@@ -22,6 +22,8 @@ import (
 	"cuelang.org/go/cue/ast"
 	"cuelang.org/go/cue/ast/astutil"
 	"cuelang.org/go/cue/errors"
+	"cuelang.org/go/cue/token"
+	"cuelang.org/go/internal/cueversion"
 	"cuelang.org/go/internal/mod/semver"
 	"cuelang.org/go/internal/source"
 )
@@ -70,7 +72,7 @@ func (cfg Config) apply(cfg1 *Config) {
 func NewConfig(opts ...Option) Config {
 	return Config{
 		valid:   true,
-		Version: "0",
+		Version: cueversion.LanguageVersion(),
 	}.Apply(opts...)
 }
 
@@ -187,6 +189,24 @@ func FileOffset(pos int) Option {
 	return optionFunc(func(*Config) {})
 }
 
+// ParseFile parses the source code of a single CUE source file and returns
+// the corresponding File node. The source code may be provided via
+// the filename of the source file, or via the src parameter.
+//
+// If src != nil, ParseFile parses the source from src and the filename is
+// only used when recording position information. The type of the argument
+// for the src parameter must be string, []byte, or io.Reader.
+// If src == nil, ParseFile parses the file specified by filename.
+//
+// The mode parameter controls the amount of source text parsed and other
+// optional parser functionality. Position information is recorded in the
+// file set fset, which must not be nil.
+//
+// If the source couldn't be read, the returned AST is nil and the error
+// indicates the specific failure. If the source was read but syntax
+// errors were found, the result is a partial AST (with Bad* nodes
+// representing the fragments of erroneous source code). Multiple errors
+// are returned via a ErrorList which is sorted by file position.
 func ParseFile(filename string, src interface{}, mode ...Option) (f *ast.File, err error) {
 
 	// get source
@@ -223,4 +243,48 @@ func ParseFile(filename string, src interface{}, mode ...Option) (f *ast.File, e
 	astutil.Resolve(f, pp.errf)
 
 	return f, pp.errors
+}
+
+// ParseExpr is a convenience function for parsing an expression.
+// The arguments have the same meaning as for Parse, but the source must
+// be a valid CUE (type or value) expression. Specifically, fset must not
+// be nil.
+func ParseExpr(filename string, src interface{}, mode ...Option) (ast.Expr, error) {
+	// get source
+	text, err := source.ReadAll(filename, src)
+	if err != nil {
+		return nil, err
+	}
+
+	var p parser
+	defer func() {
+		if p.panicking {
+			_ = recover()
+		}
+		err = errors.Sanitize(p.errors)
+	}()
+
+	// parse expr
+	p.init(filename, text, mode)
+	// Set up pkg-level scopes to avoid nil-pointer errors.
+	// This is not needed for a correct expression x as the
+	// parser will be ok with a nil topScope, but be cautious
+	// in case of an erroneous x.
+	e := p.parseRHS()
+
+	// If a comma was inserted, consume it;
+	// report an error if there's more tokens.
+	if p.tok == token.COMMA && p.lit == "\n" {
+		p.next()
+	}
+	if p.cfg.Mode&AllowPartial == 0 {
+		p.expect(token.EOF)
+	}
+
+	if p.errors != nil {
+		return nil, p.errors
+	}
+	astutil.ResolveExpr(e, p.errf)
+
+	return e, p.errors
 }

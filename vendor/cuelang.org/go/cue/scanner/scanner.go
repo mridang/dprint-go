@@ -19,7 +19,7 @@ package scanner
 
 import (
 	"fmt"
-	"strings"
+	"path/filepath"
 	"unicode"
 	"unicode/utf8"
 
@@ -126,7 +126,7 @@ func (s *Scanner) Init(file *token.File, src []byte, eh ErrorHandler, mode Mode)
 		panic(fmt.Sprintf("file size (%d) does not match src len (%d)", file.Size(), len(src)))
 	}
 	s.file = file
-	s.dir = strings.Join(strings.Split(file.Name(), "/")[:len(strings.Split(file.Name(), "/"))-1], "/")
+	s.dir, _ = filepath.Split(file.Name())
 	s.src = src
 	s.errh = eh
 	s.mode = mode

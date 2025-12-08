@@ -16,12 +16,15 @@
 //
 // The pivotal error type in CUE packages is the interface type Error.
 // The information available in such errors can be most easily retrieved using
+// the Path, Positions, and Print functions.
 package errors
 
 import (
 	"cmp"
 	"errors"
 	"fmt"
+	"io"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -483,6 +486,9 @@ func (p list) Err() error {
 
 // A Config defines parameters for printing.
 type Config struct {
+	// Format formats the given string and arguments and writes it to w.
+	// It is used for all printing.
+	Format func(w io.Writer, format string, args ...interface{})
 
 	// Cwd is the current working directory. Filename positions are taken
 	// relative to this path.
@@ -500,14 +506,30 @@ type Config struct {
 
 var zeroConfig = &Config{}
 
+// Print is a utility function that prints a list of errors to w,
+// one error per line, if the err parameter is a list. Otherwise
+// it prints the err string.
+func Print(w io.Writer, err error, cfg *Config) {
+	if cfg == nil {
+		cfg = zeroConfig
+	}
+	for _, e := range list(Errors(err)).sanitize() {
+		printError(w, e, cfg)
+	}
+}
+
+// Details is a convenience wrapper for Print to return the error text as a
+// string.
 func Details(err error, cfg *Config) string {
 	var b strings.Builder
+	Print(&b, err, cfg)
 	return b.String()
 }
 
 // String generates a short message from a given Error.
 func String(err Error) string {
 	var b strings.Builder
+	writeErr(&b, err, zeroConfig)
 	return b.String()
 }
 
@@ -515,5 +537,129 @@ func String(err Error) string {
 // provided configuration.
 func StringWithConfig(err Error, cfg *Config) string {
 	var b strings.Builder
+	writeErr(&b, err, cfg)
 	return b.String()
+}
+
+func writeErr(w io.Writer, err Error, cfg *Config) {
+	if !cfg.OmitPath {
+		if path := strings.Join(err.Path(), "."); path != "" {
+			_, _ = io.WriteString(w, path)
+			_, _ = io.WriteString(w, ": ")
+		}
+	}
+
+	for {
+		u := errors.Unwrap(err)
+
+		msg, args := err.Msg()
+
+		// Just like [printError] does when printing one position per line,
+		// make sure that any position formatting arguments print as relative paths.
+		//
+		// Note that [Error.Msg] isn't clear about whether we should treat args as read-only,
+		// so we make a copy if we need to replace any arguments.
+		didCopy := false
+		for i, arg := range args {
+			var alt any
+			switch arg := arg.(type) {
+			case token.Pos:
+				pos := arg.Position()
+				pos.Filename = relPath(pos.Filename, cfg)
+				alt = pos
+			case token.Position:
+				pos := arg
+				pos.Filename = relPath(pos.Filename, cfg)
+				alt = pos
+			default:
+				if cfg.Printer == nil {
+					// We should always do something. Consider replacing
+					// vertices with a path if this is not set.
+					continue
+				}
+				var replaced bool
+				alt, replaced = cfg.Printer.ReplaceArg(arg)
+				if !replaced {
+					continue
+				}
+			}
+			if !didCopy {
+				args = slices.Clone(args)
+				didCopy = true
+			}
+			args[i] = alt
+		}
+
+		n, _ := fmt.Fprintf(w, msg, args...)
+
+		if u == nil {
+			break
+		}
+
+		if n > 0 {
+			_, _ = io.WriteString(w, ": ")
+		}
+		err, _ = u.(Error)
+		if err == nil {
+			fmt.Fprint(w, u)
+			break
+		}
+	}
+}
+
+func defaultFprintf(w io.Writer, format string, args ...interface{}) {
+	fmt.Fprintf(w, format, args...)
+}
+
+func printError(w io.Writer, err error, cfg *Config) {
+	if err == nil {
+		return
+	}
+	fprintf := cfg.Format
+	if fprintf == nil {
+		fprintf = defaultFprintf
+	}
+
+	if e, ok := err.(Error); ok {
+		writeErr(w, e, cfg)
+	} else {
+		fprintf(w, "%v", err)
+	}
+
+	positions := Positions(err)
+	if len(positions) == 0 {
+		fprintf(w, "\n")
+		return
+	}
+	fprintf(w, ":\n")
+	for _, p := range positions {
+		pos := p.Position()
+		path := relPath(pos.Filename, cfg)
+		fprintf(w, "    %s", path)
+		if pos.IsValid() {
+			if path != "" {
+				fprintf(w, ":")
+			}
+			fprintf(w, "%d:%d", pos.Line, pos.Column)
+		}
+		fprintf(w, "\n")
+	}
+}
+
+func relPath(path string, cfg *Config) string {
+	if cfg.Cwd != "" {
+		if p, err := filepath.Rel(cfg.Cwd, path); err == nil {
+			path = p
+			// Some IDEs (e.g. VSCode) only recognize a path if it starts
+			// with a dot. This also helps to distinguish between local
+			// files and builtin packages.
+			if !strings.HasPrefix(path, ".") {
+				path = fmt.Sprintf(".%c%s", filepath.Separator, path)
+			}
+		}
+	}
+	if cfg.ToSlash {
+		path = filepath.ToSlash(path)
+	}
+	return path
 }

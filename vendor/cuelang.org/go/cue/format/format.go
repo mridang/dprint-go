@@ -1,11 +1,10 @@
-// file: vendor/cuelang.org/go/cue/format/format.go
 // Copyright 2018 The CUE Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -73,9 +72,9 @@ func sortImportsOption() Option {
 //
 // const (
 // 	RawFormat Mode = 1 << iota // do not use a tabwriter; if set, UseSpaces is ignored
-// 	TabIndent                  // use tabs for indentation independent of UseSpaces
-// 	UseSpaces                  // use spaces instead of tabs for alignment
-// 	SourcePos                  // emit //line comments to preserve original source positions
+// 	TabIndent                  // use tabs for indentation independent of UseSpaces
+// 	UseSpaces                  // use spaces instead of tabs for alignment
+// 	SourcePos                  // emit //line comments to preserve original source positions
 // )
 
 // Node formats node in canonical cue fmt style and writes the result to dst.
@@ -239,7 +238,11 @@ type settings struct {
 	override  whiteSpace
 }
 
-// STUBBED: Removed init() function to avoid static initialization for WASM
+// suppress spurious linter warning: field is actually used.
+func init() {
+	s := settings{}
+	_ = s.override
+}
 
 func (f *formatter) print(a ...interface{}) {
 	for _, x := range a {

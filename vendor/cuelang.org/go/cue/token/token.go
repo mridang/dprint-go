@@ -1,4 +1,3 @@
-// file: vendor/cuelang.org/go/cue/token/token.go
 // Copyright 2018 The CUE Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -155,29 +154,19 @@ func (tok Token) Precedence() int {
 	return lowestPrec
 }
 
-// REMOVED: var keywords map[string]Token
-// REMOVED: func init() { ... }
+var keywords map[string]Token
+
+func init() {
+	keywords = make(map[string]Token)
+	for tok := keywordBeg + 1; tok < keywordEnd; tok++ {
+		keywords[tok.String()] = tok
+	}
+}
 
 // Lookup maps an identifier to its keyword token or IDENT (if not a keyword).
-// REPLACED: Use switch instead of map lookup to avoid static initialization.
 func Lookup(ident string) Token {
-	switch ident {
-	case "if":
-		return IF
-	case "for":
-		return FOR
-	case "in":
-		return IN
-	case "let":
-		return LET
-	case "func":
-		return FUNC
-	case "true":
-		return TRUE
-	case "false":
-		return FALSE
-	case "null":
-		return NULL
+	if tok, isKeyword := keywords[ident]; isKeyword {
+		return tok
 	}
 	return IDENT
 }

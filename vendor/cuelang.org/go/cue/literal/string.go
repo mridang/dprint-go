@@ -1,32 +1,41 @@
-// file: vendor/cuelang.org/go/cue/literal/string.go
 // Copyright 2019 CUE Authors
-// ... (License) ...
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package literal
 
 import (
-	// "errors" // REMOVED: No longer needed for static init
+	"errors"
 	"strings"
 	"unicode"
 	"unicode/utf8"
 )
 
-// STUBBED: Use a custom string type for errors.
-// This allows us to use 'const', which requires NO static initialization at runtime.
-type litErr string
-
-func (e litErr) Error() string { return string(e) }
-
-const (
-	errSyntax            = litErr("invalid syntax")
-	errInvalidWhitespace = litErr("invalid string: invalid whitespace")
-	errMissingNewline    = litErr("invalid string: opening quote of multiline string must be followed by newline")
-	errUnmatchedQuote    = litErr("invalid string: unmatched quote")
-	errSurrogate         = litErr("unmatched surrogate pair")
-	errEscapedLastNewline = litErr("last newline of multiline string cannot be escaped")
+var (
+	errSyntax            = errors.New("invalid syntax")
+	errInvalidWhitespace = errors.New("invalid string: invalid whitespace")
+	errMissingNewline    = errors.New(
+		"invalid string: opening quote of multiline string must be followed by newline")
+	errUnmatchedQuote = errors.New("invalid string: unmatched quote")
+	// TODO: making this an error is optional according to RFC 4627. But we
+	// could make it not an error if this ever results in an issue.
+	errSurrogate          = errors.New("unmatched surrogate pair")
+	errEscapedLastNewline = errors.New("last newline of multiline string cannot be escaped")
 )
 
-// Unquote interprets s as a single- or double-quoted, single- or multi-line...
+// Unquote interprets s as a single- or double-quoted, single- or multi-line
+// string, possibly with custom escape delimiters, returning the string value
+// that s quotes.
 func Unquote(s string) (string, error) {
 	info, nStart, _, err := ParseQuotes(s, s)
 	if err != nil {
@@ -46,18 +55,24 @@ type QuoteInfo struct {
 	numChar    byte
 }
 
+// IsDouble reports whether the literal uses double quotes.
 func (q QuoteInfo) IsDouble() bool {
 	return q.char == '"'
 }
 
+// IsMulti reports whether a multi-line string was parsed.
 func (q QuoteInfo) IsMulti() bool {
 	return q.multiline
 }
 
+// Whitespace returns prefix whitespace for multiline strings.
 func (q QuoteInfo) Whitespace() string {
 	return q.whitespace
 }
 
+// ParseQuotes checks if the opening quotes in start matches the ending quotes
+// in end and reports its type as q or an error if they do not matching or are
+// invalid. nStart indicates the number of bytes used for the opening quote.
 func ParseQuotes(start, end string) (q QuoteInfo, nStart, nEnd int, err error) {
 	for i, c := range start {
 		if c != '#' {
@@ -84,7 +99,7 @@ func ParseQuotes(start, end string) (q QuoteInfo, nStart, nEnd int, err error) {
 			}
 			q.multiline = true
 			q.numChar = 3
-			nStart = len(q.quote) + 1
+			nStart = len(q.quote) + 1 // add whitespace later
 		} else {
 			q.quote = start[:1+q.numHash]
 			q.numChar = 1
@@ -121,12 +136,17 @@ func ParseQuotes(start, end string) (q QuoteInfo, nStart, nEnd int, err error) {
 	return q, nStart, int(q.numChar) + q.numHash, nil
 }
 
+// Unquote unquotes the given string, which should not contain
+// the initial quote character(s). It must be terminated with a quote or an
+// interpolation start. Escape sequences are expanded and surrogates
+// are replaced with the corresponding non-surrogate code points.
 func (q QuoteInfo) Unquote(s string) (string, error) {
 	if len(s) > 0 && !q.multiline {
 		if strings.ContainsAny(s, "\n\r") {
 			return "", errSyntax
 		}
 
+		// Is it trivial? Avoid allocation.
 		if s[len(s)-1] == q.char && q.numHash == 0 {
 			if s := s[:len(s)-1]; isSimple(s, rune(q.char)) {
 				return s, nil
@@ -134,7 +154,7 @@ func (q QuoteInfo) Unquote(s string) (string, error) {
 		}
 	}
 
-	buf := make([]byte, 0, 3*len(s)/2)
+	buf := make([]byte, 0, 3*len(s)/2) // Try to avoid more allocations.
 	stripNL := false
 	wasEscapedNewline := false
 	for len(s) > 0 {
@@ -187,6 +207,8 @@ func (q QuoteInfo) Unquote(s string) (string, error) {
 					return "", errEscapedLastNewline
 				}
 				if stripNL {
+					// Strip the last newline, but only if it came from a closing
+					// quote.
 					buf = buf[:len(buf)-1]
 				}
 			case terminatedByExpr:
@@ -203,12 +225,15 @@ func (q QuoteInfo) Unquote(s string) (string, error) {
 			buf = utf8.AppendRune(buf, c)
 		}
 	}
+	// allow unmatched quotes if already checked.
 	return "", errUnmatchedQuote
 }
 
 func skipWhitespaceAfterNewline(s string, q QuoteInfo) (string, error) {
 	switch {
 	case !q.multiline:
+		// Can't happen because Unquote does an initial check for literal newlines
+		// in the non-multiline case, but be defensive.
 		fallthrough
 	default:
 		return "", errInvalidWhitespace
@@ -227,6 +252,9 @@ const (
 )
 
 func isSimple(s string, quote rune) bool {
+	// TODO(perf): check if using a simple DFA to detect surrogate pairs is
+	// faster than converting to code points. At the very least there should
+	// be an ASCII fast path.
 	for _, r := range s {
 		if r == quote || r == '\\' {
 			return false
@@ -244,7 +272,27 @@ const (
 	escapedNewline    = rune(-3)
 )
 
+// unquoteChar decodes the first character or byte in the escaped string.
+// It returns four values:
+//
+//  1. value, the decoded Unicode code point or byte value if non-negative, or
+//     one of the following special values:
+//     - terminatedByQuote indicates terminated by quotes
+//     - terminatedByExpr means terminated by \(
+//     - escapedNewline means that the line-termination character was quoted and should be omitted
+//  2. multibyte, a boolean indicating whether the decoded character requires a multibyte UTF-8 representation;
+//  3. tail, the remainder of the string after the character; and
+//  4. an error that will be nil if the character is syntactically valid.
+//
+// The second argument, kind, specifies the type of literal being parsed
+// and therefore which kind of escape sequences are permitted.
+// For kind 's' only JSON escapes and \u{ are permitted.
+// For kind 'b' also hexadecimal and octal escape sequences are permitted.
+//
+// The third argument, quote, specifies that an ASCII quoting character that
+// is not permitted in the output.
 func unquoteChar(s string, info QuoteInfo) (value rune, multibyte bool, tail string, err error) {
+	// easy cases
 	switch c := s[0]; {
 	case c == info.char && info.char != 0:
 		for i := 1; byte(i) < info.numChar; i++ {
@@ -258,10 +306,14 @@ func unquoteChar(s string, info QuoteInfo) (value rune, multibyte bool, tail str
 			}
 		}
 		if ln := int(info.numChar) + info.numHash; len(s) != ln {
+			// TODO: terminating quote in middle of string
 			return 0, false, s[ln:], errSyntax
 		}
 		return terminatedByQuote, false, "", nil
 	case c >= utf8.RuneSelf:
+		// TODO: consider handling surrogate values. These are discarded by
+		// DecodeRuneInString. It is technically correct to disallow it, but
+		// some JSON parsers allow this anyway.
 		r, size := utf8.DecodeRuneInString(s)
 		return r, true, s[size:], nil
 	case c != '\\':
@@ -281,20 +333,31 @@ func unquoteChar(s string, info QuoteInfo) (value rune, multibyte bool, tail str
 	s = s[2+info.numHash:]
 
 	switch c {
-	case 'a': value = '\a'
-	case 'b': value = '\b'
-	case 'f': value = '\f'
-	case 'n': value = '\n'
-	case 'r': value = '\r'
-	case 't': value = '\t'
-	case 'v': value = '\v'
-	case '/': value = '/'
+	case 'a':
+		value = '\a'
+	case 'b':
+		value = '\b'
+	case 'f':
+		value = '\f'
+	case 'n':
+		value = '\n'
+	case 'r':
+		value = '\r'
+	case 't':
+		value = '\t'
+	case 'v':
+		value = '\v'
+	case '/':
+		value = '/'
 	case 'x', 'u', 'U':
 		n := 0
 		switch c {
-		case 'x': n = 2
-		case 'u': n = 4
-		case 'U': n = 8
+		case 'x':
+			n = 2
+		case 'u':
+			n = 4
+		case 'U':
+			n = 8
 		}
 		var v rune
 		if len(s) < n {
@@ -315,6 +378,7 @@ func unquoteChar(s string, info QuoteInfo) (value rune, multibyte bool, tail str
 				err = errSyntax
 				return
 			}
+			// single-byte string, possibly not UTF-8
 			value = v
 			break
 		}
@@ -334,7 +398,7 @@ func unquoteChar(s string, info QuoteInfo) (value rune, multibyte bool, tail str
 			err = errSyntax
 			return
 		}
-		for j := 0; j < 2; j++ {
+		for j := 0; j < 2; j++ { // one digit already; two more
 			x := rune(s[j]) - '0'
 			if x < 0 || x > 7 {
 				err = errSyntax
@@ -351,6 +415,7 @@ func unquoteChar(s string, info QuoteInfo) (value rune, multibyte bool, tail str
 	case '\\':
 		value = '\\'
 	case '\'', '"':
+		// TODO: should we allow escaping of quotes regardless?
 		if c != info.char {
 			err = errSyntax
 			return
@@ -358,6 +423,7 @@ func unquoteChar(s string, info QuoteInfo) (value rune, multibyte bool, tail str
 		value = rune(c)
 	case '(':
 		if s != "" {
+			// TODO: terminating quote in middle of string
 			return 0, false, s, errSyntax
 		}
 		value = terminatedByExpr

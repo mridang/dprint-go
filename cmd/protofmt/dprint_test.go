@@ -9,6 +9,9 @@ import (
 	"slices"
 	"testing"
 	"time"
+
+	"github.com/emicklei/proto"
+	"github.com/emicklei/proto-contrib/pkg/protofmt"
 )
 
 // TestDprint_Formats_Proto_File verifies end-to-end formatting using dprint
@@ -18,7 +21,7 @@ import (
 // section via the repository helper, writes a deliberately malformed Proto
 // file in a temporary directory, invokes `dprint fmt` with the repo
 // configuration, and asserts the resulting file bytes match the
-// expected canonical output. It then runs dprint a second time to
+// canonical output from protofmt. It then runs dprint a second time to
 // assert idempotence.
 //
 // Preconditions:
@@ -47,7 +50,6 @@ func TestDprint_Formats_Proto_File(t *testing.T) {
 	td := t.TempDir()
 	srcPath := filepath.Join(td, "test.proto")
 
-	// Input: Ugly formatting
 	bad := []byte(`syntax="proto3";
 package main;
 message Foo{
@@ -55,25 +57,21 @@ int32 bar=1;
  string baz=2;
 }`)
 
-	// Expected formatted Proto (standard buf formatting)
-	// We hardcode this because importing buf libraries directly triggers
-	// a "bufprivateusage" panic in the test runner.
-	want := []byte(`syntax = "proto3";
+	if err := os.WriteFile(srcPath, bad, 0o644); err != nil {
+		t.Fatalf("write source: %v", err)
+	}
 
-package main;
-
-message Foo {
-  int32 bar = 1;
-  string baz = 2;
-}
-`)
+	parser := proto.NewParser(bytes.NewReader(bad))
+	definition, err := parser.Parse()
+	if err != nil {
+		t.Fatalf("proto parser failed on input: %v", err)
+	}
+	var buf bytes.Buffer
+	protofmt.NewFormatter(&buf, "  ").Format(definition)
+	want := buf.Bytes()
 
 	if bytes.Equal(bad, want) {
 		t.Fatalf("test input not malformed; no change would be observed")
-	}
-
-	if err := os.WriteFile(srcPath, bad, 0o644); err != nil {
-		t.Fatalf("write source: %v", err)
 	}
 
 	runDprintFmt(t, td, filepath.Join(pkgDir, "dprint.json"))

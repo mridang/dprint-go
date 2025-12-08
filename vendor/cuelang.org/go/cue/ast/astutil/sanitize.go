@@ -16,6 +16,7 @@ package astutil
 
 import (
 	"fmt"
+	"math/rand/v2"
 	"strings"
 
 	"cuelang.org/go/cue/ast"
@@ -40,6 +41,7 @@ import (
 func Sanitize(f *ast.File) error {
 	z := &sanitizer{
 		file: f,
+		rand: rand.New(rand.NewPCG(123, 456)), // ensure determinism between runs
 
 		names:      map[string]bool{},
 		importMap:  map[string]*ast.ImportSpec{},
@@ -83,6 +85,8 @@ func Sanitize(f *ast.File) error {
 type sanitizer struct {
 	file      *ast.File
 	fileScope *scope
+
+	rand *rand.Rand
 
 	// names is all used names. Can be used to determine a new unique name.
 	names      map[string]bool
@@ -346,7 +350,7 @@ func (z *sanitizer) uniqueName(base string, hidden bool) string {
 	const mask = 0xff_ffff_ffff_ffff // max bits; stay clear of int64 overflow
 	const shift = 4                  // rate of growth
 	for n := int64(0x10); ; n = mask&((n<<shift)-1) + 1 {
-		num := 1
+		num := z.rand.IntN(int(n))
 		name := fmt.Sprintf("%s_%01X", base, num)
 		if !z.names[name] {
 			z.names[name] = true

@@ -19,6 +19,9 @@ package source
 import (
 	"bytes"
 	"fmt"
+	"io"
+	"os"
+	"strings"
 )
 
 // ReadAll loads the source bytes for the given arguments. If src != nil,
@@ -33,10 +36,33 @@ func ReadAll(filename string, src any) ([]byte, error) {
 		case []byte:
 			return src, nil
 		case *bytes.Buffer:
+			// is io.Reader, but src is already available in []byte form
 			return src.Bytes(), nil
+		case io.Reader:
+			return io.ReadAll(src)
 		}
 		return nil, fmt.Errorf("invalid source type %T", src)
 	}
-	return nil, fmt.Errorf("ff")
+	return os.ReadFile(filename)
 }
 
+// Open creates a source reader for the given arguments. If src != nil,
+// Open converts src to an io.Open if possible; otherwise it returns an
+// error. If src == nil, Open returns the result of opening the file
+// specified by filename.
+func Open(filename string, src any) (io.ReadCloser, error) {
+	if src != nil {
+		switch src := src.(type) {
+		case string:
+			return io.NopCloser(strings.NewReader(src)), nil
+		case []byte:
+			return io.NopCloser(bytes.NewReader(src)), nil
+		case io.ReadCloser:
+			return src, nil
+		case io.Reader:
+			return io.NopCloser(src), nil
+		}
+		return nil, fmt.Errorf("invalid source type %T", src)
+	}
+	return os.Open(filename)
+}

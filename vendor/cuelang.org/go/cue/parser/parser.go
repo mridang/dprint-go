@@ -1,11 +1,10 @@
-// file: vendor/cuelang.org/go/cue/parser/parser.go
 // Copyright 2018 The CUE Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -77,11 +76,6 @@ type parser struct {
 	imports []*ast.ImportSpec // list of imports
 }
 
-// REPLACED: Named method avoids closure allocation in init
-func (p *parser) handleError(pos token.Pos, msg string, args []interface{}) {
-	p.errors = errors.Append(p.errors, errors.Newf(pos, msg, args...))
-}
-
 func (p *parser) init(filename string, src []byte, opts []Option) {
 	p.cfg = NewConfig().Apply(opts...)
 	p.file = token.NewFile(filename, -1, len(src))
@@ -90,9 +84,10 @@ func (p *parser) init(filename string, src []byte, opts []Option) {
 	if p.cfg.Mode&ParseComments != 0 {
 		m = scanner.ScanComments
 	}
-
-	// REPLACED: Use method expression p.handleError instead of anonymous closure
-	p.scanner.Init(p.file, src, p.handleError, m)
+	eh := func(pos token.Pos, msg string, args []interface{}) {
+		p.errors = errors.Append(p.errors, errors.Newf(pos, msg, args...))
+	}
+	p.scanner.Init(p.file, src, eh, m)
 
 	p.trace = p.cfg.Mode&Trace != 0 // for convenience (p.trace is used frequently)
 
@@ -1122,9 +1117,9 @@ func (p *parser) parseStructBody() []ast.Decl {
 
 	// TODO: consider "stealing" non-lead comments.
 	// for _, cg := range p.comments.groups {
-	//      if cg != nil {
-	//              elts = append(elts, cg)
-	//      }
+	// 	if cg != nil {
+	// 		elts = append(elts, cg)
+	// 	}
 	// }
 	// p.comments.groups = p.comments.groups[:0]
 

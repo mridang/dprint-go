@@ -1,11 +1,3 @@
-# buf.build/go/bufprivateusage v0.1.0
-## explicit; go 1.24.0
-buf.build/go/bufprivateusage
-# buf.build/go/standard v0.1.0
-## explicit; go 1.23.0
-buf.build/go/standard/xlog/xslog
-buf.build/go/standard/xos/xexec
-buf.build/go/standard/xslices
 # cuelang.org/go v0.15.1
 ## explicit; go 1.24.0
 cuelang.org/go/cue/ast
@@ -29,43 +21,17 @@ github.com/agext/levenshtein
 # github.com/apparentlymart/go-textseg/v15 v15.0.0
 ## explicit; go 1.16
 github.com/apparentlymart/go-textseg/v15/textseg
-# github.com/bufbuild/buf v1.61.0
-## explicit; go 1.24.0
-github.com/bufbuild/buf/private/buf/bufformat
-github.com/bufbuild/buf/private/bufpkg/bufanalysis
-github.com/bufbuild/buf/private/bufpkg/bufcas
-github.com/bufbuild/buf/private/bufpkg/bufmodule
-github.com/bufbuild/buf/private/bufpkg/bufparse
-github.com/bufbuild/buf/private/bufpkg/bufprotocompile
-github.com/bufbuild/buf/private/gen/data/datawkt
-github.com/bufbuild/buf/private/pkg/cache
-github.com/bufbuild/buf/private/pkg/dag
-github.com/bufbuild/buf/private/pkg/diff
-github.com/bufbuild/buf/private/pkg/netext
-github.com/bufbuild/buf/private/pkg/normalpath
-github.com/bufbuild/buf/private/pkg/shake256
-github.com/bufbuild/buf/private/pkg/storage
-github.com/bufbuild/buf/private/pkg/storage/storagemem
-github.com/bufbuild/buf/private/pkg/storage/storagemem/internal
-github.com/bufbuild/buf/private/pkg/storage/storageutil
-github.com/bufbuild/buf/private/pkg/syserror
-github.com/bufbuild/buf/private/pkg/thread
-github.com/bufbuild/buf/private/pkg/uuidutil
-# github.com/bufbuild/protocompile v0.14.2-0.20251120233202-3f9009bcd6c8
-## explicit; go 1.24.0
-github.com/bufbuild/protocompile/ast
-github.com/bufbuild/protocompile/internal
-github.com/bufbuild/protocompile/internal/cases
-github.com/bufbuild/protocompile/internal/editions
-github.com/bufbuild/protocompile/parser
-github.com/bufbuild/protocompile/parser/fastscan
-github.com/bufbuild/protocompile/reporter
-github.com/bufbuild/protocompile/walk
 # github.com/cockroachdb/apd/v3 v3.2.1
 ## explicit; go 1.17
 github.com/cockroachdb/apd/v3
 # github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 ## explicit
+# github.com/emicklei/proto v1.14.2
+## explicit; go 1.12
+github.com/emicklei/proto
+# github.com/emicklei/proto-contrib v0.18.2
+## explicit; go 1.16
+github.com/emicklei/proto-contrib/pkg/protofmt
 # github.com/google/go-cmp v0.7.0
 ## explicit; go 1.21
 github.com/google/go-cmp/cmp
@@ -73,9 +39,6 @@ github.com/google/go-cmp/cmp/internal/diff
 github.com/google/go-cmp/cmp/internal/flags
 github.com/google/go-cmp/cmp/internal/function
 github.com/google/go-cmp/cmp/internal/value
-# github.com/google/uuid v1.6.0
-## explicit
-github.com/google/uuid
 # github.com/hashicorp/hcl/v2 v2.24.0
 ## explicit; go 1.23.0
 github.com/hashicorp/hcl/v2
@@ -85,9 +48,8 @@ github.com/hashicorp/hcl/v2/hclwrite
 # github.com/mitchellh/go-wordwrap v1.0.1
 ## explicit; go 1.14
 github.com/mitchellh/go-wordwrap
-# github.com/petermattis/goid v0.0.0-20250904145737-900bdf8bb490
+# github.com/stretchr/testify v1.11.1
 ## explicit; go 1.17
-github.com/petermattis/goid
 # github.com/wasmerio/wasmer-go v1.0.4
 ## explicit; go 1.14
 github.com/wasmerio/wasmer-go/wasmer
@@ -106,18 +68,12 @@ github.com/zclconf/go-cty/cty/function/stdlib
 github.com/zclconf/go-cty/cty/gocty
 github.com/zclconf/go-cty/cty/json
 github.com/zclconf/go-cty/cty/set
-# golang.org/x/crypto v0.45.0
-## explicit; go 1.24.0
-golang.org/x/crypto/sha3
 # golang.org/x/mod v0.30.0
 ## explicit; go 1.24.0
 golang.org/x/mod/semver
 # golang.org/x/sync v0.18.0
 ## explicit; go 1.24.0
 golang.org/x/sync/errgroup
-# golang.org/x/sys v0.38.0
-## explicit; go 1.24.0
-golang.org/x/sys/cpu
 # golang.org/x/text v0.31.0
 ## explicit; go 1.24.0
 golang.org/x/text/transform
@@ -146,35 +102,6 @@ golang.org/x/tools/internal/typesinternal
 golang.org/x/tools/internal/versions
 # google.golang.org/protobuf v1.36.10
 ## explicit; go 1.23
-google.golang.org/protobuf/encoding/prototext
-google.golang.org/protobuf/encoding/protowire
-google.golang.org/protobuf/internal/descfmt
-google.golang.org/protobuf/internal/descopts
-google.golang.org/protobuf/internal/detrand
-google.golang.org/protobuf/internal/editiondefaults
-google.golang.org/protobuf/internal/encoding/defval
-google.golang.org/protobuf/internal/encoding/messageset
-google.golang.org/protobuf/internal/encoding/tag
-google.golang.org/protobuf/internal/encoding/text
-google.golang.org/protobuf/internal/errors
-google.golang.org/protobuf/internal/filedesc
-google.golang.org/protobuf/internal/filetype
-google.golang.org/protobuf/internal/flags
-google.golang.org/protobuf/internal/genid
-google.golang.org/protobuf/internal/impl
-google.golang.org/protobuf/internal/order
-google.golang.org/protobuf/internal/pragma
-google.golang.org/protobuf/internal/protolazy
-google.golang.org/protobuf/internal/set
-google.golang.org/protobuf/internal/strs
-google.golang.org/protobuf/internal/version
-google.golang.org/protobuf/proto
-google.golang.org/protobuf/reflect/protoreflect
-google.golang.org/protobuf/reflect/protoregistry
-google.golang.org/protobuf/runtime/protoiface
-google.golang.org/protobuf/runtime/protoimpl
-google.golang.org/protobuf/types/descriptorpb
-google.golang.org/protobuf/types/dynamicpb
 # mvdan.cc/sh/v3 v3.12.0
 ## explicit; go 1.23.0
 mvdan.cc/sh/v3/fileutil

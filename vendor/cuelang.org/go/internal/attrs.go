@@ -1,11 +1,10 @@
-// file: vendor/cuelang.org/go/internal/attrs.go
 // Copyright 2020 CUE Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,13 +16,13 @@ package internal
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"cuelang.org/go/cue/errors"
 	"cuelang.org/go/cue/literal"
 	"cuelang.org/go/cue/scanner"
 	"cuelang.org/go/cue/token"
+	"github.com/cockroachdb/apd/v3"
 )
 
 // AttrKind indicates the location of an attribute within CUE source.
@@ -36,7 +35,7 @@ const (
 
 	// DeclAttr indicates an attribute was specified at a declaration position.
 	// foo: {
-	//     @attr()
+	//     @attr()
 	// }
 	DeclAttr
 
@@ -111,10 +110,15 @@ func (a *Attr) Int(pos int) (int64, error) {
 	if err := a.hasPos(pos); err != nil {
 		return 0, err
 	}
-	// REPLACED: Use strconv instead of apd for WASM/Formatting purposes.
-	// This will handle standard integers and 0x hex, but not CUE multipliers (1K).
-	// This is generally safe for attribute parsing in formatting contexts.
-	return strconv.ParseInt(a.Fields[pos].Text(), 0, 64)
+	var ni literal.NumInfo
+	if err := literal.ParseNum(a.Fields[pos].Text(), &ni); err != nil {
+		return 0, err
+	}
+	var d apd.Decimal
+	if err := ni.Decimal(&d); err != nil {
+		return 0, err
+	}
+	return d.Int64()
 }
 
 // Flag reports whether an entry with the given name exists at position pos or
@@ -145,6 +149,59 @@ func (a *Attr) Lookup(pos int, key string) (val string, found bool, err error) {
 		}
 	}
 	return "", false, nil
+}
+
+func ParseAttrBody(pos token.Pos, s string) (a Attr) {
+	// Create temporary token.File so that scanner has something
+	// to work with.
+	// TODO it's probably possible to do this without allocations.
+	tmpFile := token.NewFile("", -1, len(s))
+	if len(s) > 0 {
+		tmpFile.AddLine(len(s) - 1)
+	}
+	a.Body = s
+	a.Pos = pos
+	var scan scanner.Scanner
+	scan.Init(tmpFile, []byte(s), nil, scanner.DontInsertCommas)
+	for {
+		start := scan.Offset()
+		tok, err := scanAttributeTokens(&scan, pos, 1<<token.COMMA|1<<token.BIND|1<<token.EOF)
+		if err != nil {
+			// Shouldn't happen because bracket nesting should have been checked previously by
+			// the regular CUE parser.
+			a.Err = err
+			return a
+		}
+		switch tok {
+		case token.EOF:
+			// Empty field.
+			a.appendField("", s[start:], s[start:])
+			return a
+		case token.COMMA:
+			val := s[start : scan.Offset()-1]
+			a.appendField("", val, val) // All but final comma.
+			continue
+		}
+		valStart := scan.Offset()
+		key := s[start : valStart-1] // All but =.
+		tok, err = scanAttributeTokens(&scan, pos, 1<<token.COMMA|1<<token.EOF)
+		if err != nil {
+			// Shouldn't happen because bracket nesting should have been checked previously by
+			// the regular CUE parser.
+			a.Err = err
+			return a
+		}
+		valEnd := len(s)
+		if tok != token.EOF {
+			valEnd = scan.Offset() - 1 // All but final comma
+		}
+		value := s[valStart:valEnd]
+		text := s[start:valEnd]
+		a.appendField(key, value, text)
+		if tok == token.EOF {
+			return a
+		}
+	}
 }
 
 func (a *Attr) appendField(k, v, text string) {

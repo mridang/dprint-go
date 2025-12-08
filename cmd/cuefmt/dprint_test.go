@@ -3,23 +3,24 @@ package main
 import (
 	"bytes"
 	"context"
-	gofmt "go/format"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
 	"testing"
 	"time"
+
+	cuefmt "cuelang.org/go/cue/format"
 )
 
-// TestDprint_Formats_Go_File verifies end-to-end formatting using dprint
+// TestDprint_Formats_Cue_File verifies end-to-end formatting using dprint
 // and the TinyGo-built plugin.
 //
 // The test builds the WebAssembly plugin with TinyGo, injects a start
-// section via the repository helper, writes a deliberately malformed Go
+// section via the repository helper, writes a deliberately malformed CUE
 // file in a temporary directory, invokes `dprint fmt` with the repo
 // configuration, and asserts the resulting file bytes match the
-// canonical output from go/format. It then runs dprint a second time to
+// canonical output from cue/format. It then runs dprint a second time to
 // assert idempotence.
 //
 // Preconditions:
@@ -27,13 +28,13 @@ import (
 //   - `tinygo` is available in PATH.
 //   - `dprint` is available in PATH.
 //   - `dprint.json` exists in the repository root and references the
-//     plugin artifact at `build/gofmt.wasm`.
+//     plugin artifact at `build/cuefmt.wasm`.
 //   - The helper `cmd/addstart/main.go` exists to inject a start section
 //     that calls `_initialize`.
 //
 // The test streams tool output on failures and uses timeouts to avoid
 // hanging in CI. It fails fast on any unmet precondition.
-func TestDprint_Formats_Go_File(t *testing.T) {
+func TestDprint_Formats_Cue_File(t *testing.T) {
 	requireInPath(t, "tinygo")
 	requireInPath(t, "dprint")
 
@@ -46,20 +47,22 @@ func TestDprint_Formats_Go_File(t *testing.T) {
 	injectStartSection(t, repoRoot)
 
 	td := t.TempDir()
-	srcPath := filepath.Join(td, "main.go")
+	srcPath := filepath.Join(td, "test.cue")
 
 	bad := []byte(`package main
-import "fmt"
-func main(){fmt.Println("ok")}
-`)
+import "list"
+foo:  {
+	bar: "baz"
+	num: 1
+}`)
 
 	if err := os.WriteFile(srcPath, bad, 0o644); err != nil {
 		t.Fatalf("write source: %v", err)
 	}
 
-	want, err := gofmt.Source(bad)
+	want, err := cuefmt.Source(bad)
 	if err != nil {
-		t.Fatalf("go/format failed on input: %v", err)
+		t.Fatalf("cue/format failed on input: %v", err)
 	}
 	if bytes.Equal(bad, want) {
 		t.Fatalf("test input not malformed; no change would be observed")
@@ -90,7 +93,7 @@ func main(){fmt.Println("ok")}
 	}
 }
 
-// buildPluginWasm compiles the plugin to build/gofmt.wasm using the
+// buildPluginWasm compiles the plugin to build/cuefmt.wasm using the
 // same flags as production. A timeout is applied to prevent hangs.
 func buildPluginWasm(t *testing.T) {
 	t.Helper()
@@ -105,18 +108,19 @@ func buildPluginWasm(t *testing.T) {
 	cmd := exec.CommandContext(
 		ctx,
 		"tinygo", "build",
-		"-o=build/gofmt.wasm",
+		"-o=build/cuefmt.wasm",
 		"-target=wasm-unknown",
 		"-scheduler=none",
 		"-no-debug",
-		"-opt=2",
+		"-opt=1",
+		"-panic=print",
 		"main.go",
 	)
 	runCmd(t, cmd, "tinygo build")
 }
 
 // injectStartSection runs the helper to inject a start section and
-// replaces build/gofmt.wasm with the fixed output.
+// replaces build/cuefmt.wasm with the fixed output.
 func injectStartSection(t *testing.T, repoRoot string) {
 	t.Helper()
 
@@ -127,12 +131,12 @@ func injectStartSection(t *testing.T, repoRoot string) {
 	cmd := exec.CommandContext(
 		ctx,
 		"go", "run", addstartPath,
-		"build/gofmt.wasm",
+		"build/cuefmt.wasm",
 		"build/dprint-fixed.wasm",
 	)
 	runCmd(t, cmd, "addstart")
 
-	if err := os.Rename("build/dprint-fixed.wasm", "build/gofmt.wasm"); err != nil {
+	if err := os.Rename("build/dprint-fixed.wasm", "build/cuefmt.wasm"); err != nil {
 		t.Fatalf("rename fixed wasm: %v", err)
 	}
 }
@@ -147,7 +151,7 @@ func runDprintFmt(t *testing.T, workDir, configPath string) {
 
 	cmd := exec.CommandContext(
 		ctx,
-		"dprint", "fmt", "main.go",
+		"dprint", "fmt", "test.cue",
 		"--log-level=debug",
 		"--config="+configPath,
 	)

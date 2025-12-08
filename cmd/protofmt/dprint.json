@@ -1,0 +1,8 @@
+{
+  "includes": [
+    "**/*.proto"
+  ],
+  "plugins": [
+    "./build/protofmt.wasm"
+  ]
+}

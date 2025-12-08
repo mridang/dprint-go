@@ -1,0 +1,13 @@
+{
+  "includes": [
+    "**/*.go",
+    "**/*.sh",
+    "**/*.bash",
+    "**/*.tf"
+  ],
+  "plugins": [
+    "./build/gofmt.wasm",
+    "./build/shfmt.wasm",
+    "./build/tffmt.wasm"
+  ]
+}

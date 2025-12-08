@@ -1,8 +1,8 @@
 {
   "includes": [
-    "**/*.go"
+    "**/*.cue"
   ],
   "plugins": [
-    "./build/gofmt.wasm"
+    "./build/cuefmt.wasm"
   ]
 }

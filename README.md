@@ -1,6 +1,6 @@
 # dprint-plugin-goat
 
-**dprint-plugin-goat** provides three formatter plugins for dprint: one for Go files using Go's canonical formatter, one for shell scripts using shfmt, and one for Terraform/HCL files using HashiCorp's hclwrite. All are compiled to WebAssembly with TinyGo and plug into dprint like any other plugin.
+dprint-plugin-goat provides five formatter plugins for dprint: one for Go files using Go's canonical formatter, one for shell scripts using shfmt, one for Terraform/HCL files using HashiCorp's hclwrite, one for CUE files using the official CUE formatter, and one for Protobuf files using a Buf-compatible formatter. All are compiled to WebAssembly with TinyGo and plug into dprint like any other plugin.
 
 ##### Why?
 
@@ -83,6 +83,53 @@ dprint fmt --log-level=debug
 
 This plugin mirrors `tf fmt` and does not add custom options. If you pass an override config from dprint, it is accepted but ignored.
 
+### cuefmt
+
+Add the cuefmt plugin to your **dprint** configuration to format CUE files.
+
+```json
+{
+  "$schema": "[https://dprint.dev/schemas/v0.json](https://dprint.dev/schemas/v0.json)",
+  "plugins": [
+    "[https://github.com/mridang/dprint-goat/releases/download/v1.0.0/cuefmt.wasm](https://github.com/mridang/dprint-goat/releases/download/v1.0.0/cuefmt.wasm)"
+  ],
+  "includes": [
+    "**/*.cue"
+  ]
+}
+```
+
+```bash
+dprint fmt --log-level=debug
+```
+
+#### Options
+
+This plugin uses cuelang.org/go/cue/format and supports standard dprint indentation settings (tabs vs spaces, indent width).
+
+### protofmt
+
+Add the protofmt plugin to your **dprint** configuration to format Protobuf files.
+
+```json
+{
+  "$schema": "[https://dprint.dev/schemas/v0.json](https://dprint.dev/schemas/v0.json)",
+  "plugins": [
+    "[https://github.com/mridang/dprint-goat/releases/download/v1.0.0/protofmt.wasm](https://github.com/mridang/dprint-goat/releases/download/v1.0.0/protofmt.wasm)"
+  ],
+  "includes": [
+    "**/*.proto"
+  ]
+}
+```
+
+```bash
+dprint fmt --log-level=debug
+```
+
+#### Options
+
+This plugin implements a custom formatter designed to match `buf format` style and supports standard dprint indentation settings.
 
 ## Caveats
 

@@ -8,7 +8,7 @@
     [
       "@semantic-release/exec",
       {
-        "prepareCmd": "echo '${nextRelease.version}' > cmd/gofmt/VERSION && echo '${nextRelease.version}' > cmd/shfmt/VERSION && echo '${nextRelease.version}' > cmd/tffmt/VERSION && make build"
+        "prepareCmd": "echo '${nextRelease.version}' > cmd/gofmt/VERSION && echo '${nextRelease.version}' > cmd/shfmt/VERSION && echo '${nextRelease.version}' > cmd/tffmt/VERSION && echo '${nextRelease.version}' > cmd/cuefmt/VERSION && echo '${nextRelease.version}' > cmd/protofmt/VERSION && make build"
       }
     ],
     [
@@ -28,7 +28,9 @@
         "assets": [
           "cmd/gofmt/VERSION",
           "cmd/shfmt/VERSION",
-          "cmd/tffmt/VERSION"
+          "cmd/tffmt/VERSION",
+          "cmd/cuefmt/VERSION",
+          "cmd/protofmt/VERSION"
         ]
       }
     ]

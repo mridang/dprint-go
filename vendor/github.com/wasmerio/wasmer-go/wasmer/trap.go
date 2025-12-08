@@ -45,9 +45,9 @@ func newTrap(pointer *C.wasm_trap_t, ownedBy interface{}) *Trap {
 
 // Creates a new trap with a message.
 //
-//	engine := wasmer.NewEngine()
-//	store := wasmer.NewStore(engine)
-//	trap := NewTrap(store, "oops")
+//   engine := wasmer.NewEngine()
+//   store := wasmer.NewStore(engine)
+//   trap := NewTrap(store, "oops")
 func NewTrap(store *Store, message string) *Trap {
 	messageBytes := []byte(message)
 	var bytesPointer *C.uint8_t
@@ -93,7 +93,7 @@ func (self *Trap) Message() string {
 // Origin returns the top frame of WebAssembly stack responsible for
 // this trap.
 //
-//	frame := trap.Origin()
+//     frame := trap.Origin()
 func (self *Trap) Origin() *Frame {
 	frame := C.wasm_trap_origin(self.inner())
 

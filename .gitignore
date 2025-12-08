@@ -30,5 +30,4 @@ replay_pid*
 build
 .devbox
 devbox.lock
-devbox.json
 .go

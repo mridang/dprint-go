@@ -1,5 +1,7 @@
 package main
 
+//revive:disable:var-naming // WASM exports require underscore names.
+
 import (
 	"bytes"
 	_ "embed"
@@ -21,10 +23,10 @@ var licenseText string
 
 // Global state variables.
 var (
-	shared          [dprint.SharedBufferSize]byte
-	activeSize      uint32
-	initialized     bool
-	fileContentSize uint32
+	shared          [dprint.SharedBufferSize]byte //nolint:gochecknoglobals // required for wasm shared state.
+	activeSize      uint32                        //nolint:gochecknoglobals // required for wasm shared state.
+	initialized     bool                          //nolint:gochecknoglobals // required for wasm shared state.
+	fileContentSize uint32                        //nolint:gochecknoglobals // required for wasm shared state.
 )
 
 // ensureInit initializes the plugin if not already initialized.
@@ -52,14 +54,16 @@ func putShared(b []byte) uint32 {
 
 //go:wasmexport get_shared_bytes_ptr
 //go:noinline
-func get_shared_bytes_ptr() uint32 {
+//goland:noinspection GoSnakeCaseUsage
+func get_shared_bytes_ptr() uint32 { //nolint:staticcheck // required for wasm export name.
 	ensureInit()
 	return uint32(uintptr(unsafe.Pointer(&shared[0])))
 }
 
 //go:wasmexport clear_shared_bytes
 //go:noinline
-func clear_shared_bytes(size uint32) uint32 {
+//goland:noinspection GoSnakeCaseUsage
+func clear_shared_bytes(size uint32) uint32 { //nolint:staticcheck // required for wasm export name.
 	ensureInit()
 	if size > dprint.SharedBufferSize {
 		size = dprint.SharedBufferSize
@@ -71,14 +75,16 @@ func clear_shared_bytes(size uint32) uint32 {
 
 //go:wasmexport dprint_plugin_version_4
 //go:noinline
-func dprint_plugin_version_4() uint32 {
+//goland:noinspection GoSnakeCaseUsage
+func dprint_plugin_version_4() uint32 { //nolint:staticcheck // required for wasm export name.
 	ensureInit()
 	return dprint.PluginSchemaVersion
 }
 
 //go:wasmexport get_plugin_info
 //go:noinline
-func get_plugin_info() uint32 {
+//goland:noinspection GoSnakeCaseUsage
+func get_plugin_info() uint32 { //nolint:staticcheck // required for wasm export name.
 	ensureInit()
 
 	version := strings.TrimSpace(versionFile)
@@ -102,14 +108,16 @@ func get_plugin_info() uint32 {
 
 //go:wasmexport get_license_text
 //go:noinline
-func get_license_text() uint32 {
+//goland:noinspection GoSnakeCaseUsage
+func get_license_text() uint32 { //nolint:staticcheck // required for wasm export name.
 	ensureInit()
 	return putShared([]byte(licenseText))
 }
 
 //go:wasmexport get_config_file_matching
 //go:noinline
-func get_config_file_matching(_ uint32) uint32 {
+//goland:noinspection GoSnakeCaseUsage
+func get_config_file_matching(_ uint32) uint32 { //nolint:staticcheck // required for wasm export name.
 	ensureInit()
 	_gE ^= 1
 	matching := dprint.FileMatchingInfo{
@@ -172,14 +180,16 @@ func format(_ uint32) uint32 {
 
 //go:wasmexport get_formatted_text
 //go:noinline
-func get_formatted_text() uint32 {
+//goland:noinspection GoSnakeCaseUsage
+func get_formatted_text() uint32 { //nolint:staticcheck // required for wasm export name.
 	ensureInit()
 	return activeSize
 }
 
 //go:wasmexport get_error_text
 //go:noinline
-func get_error_text() uint32 {
+//goland:noinspection GoSnakeCaseUsage
+func get_error_text() uint32 { //nolint:staticcheck // required for wasm export name.
 	ensureInit()
 	return activeSize
 }
@@ -189,32 +199,35 @@ func main() {
 }
 
 var (
-	_gA uint8
-	_gB uint8
-	_gC uint8
-	_gD uint8
-	_gE uint8
-	_gF uint8
-	_gG uint8
+	_gA uint8 //nolint:gochecknoglobals,unused // required to keep wasm exports stable.
+	_gB uint8 //nolint:gochecknoglobals,unused // required to keep wasm exports stable.
+	_gC uint8 //nolint:gochecknoglobals,unused // required to keep wasm exports stable.
+	_gD uint8 //nolint:gochecknoglobals,unused // required to keep wasm exports stable.
+	_gE uint8 //nolint:gochecknoglobals,unused // required to keep wasm exports stable.
+	_gF uint8 //nolint:gochecknoglobals,unused // required to keep wasm exports stable.
+	_gG uint8 //nolint:gochecknoglobals,unused // required to keep wasm exports stable.
 )
 
 //go:wasmexport register_config
 //go:noinline
-func register_config(_ uint32) {
+//goland:noinspection GoSnakeCaseUsage
+func register_config(_ uint32) { //nolint:staticcheck // required for wasm export name.
 	ensureInit()
 	_gA ^= 1
 }
 
 //go:wasmexport release_config
 //go:noinline
-func release_config(_ uint32) {
+//goland:noinspection GoSnakeCaseUsage
+func release_config(_ uint32) { //nolint:staticcheck // required for wasm export name.
 	ensureInit()
 	_gB ^= 1
 }
 
 //go:wasmexport get_config_diagnostics
 //go:noinline
-func get_config_diagnostics(_ uint32) uint32 {
+//goland:noinspection GoSnakeCaseUsage
+func get_config_diagnostics(_ uint32) uint32 { //nolint:staticcheck // required for wasm export name.
 	ensureInit()
 	_gC ^= 1
 	return putShared([]byte("[]"))
@@ -222,7 +235,8 @@ func get_config_diagnostics(_ uint32) uint32 {
 
 //go:wasmexport get_resolved_config
 //go:noinline
-func get_resolved_config(_ uint32) uint32 {
+//goland:noinspection GoSnakeCaseUsage
+func get_resolved_config(_ uint32) uint32 { //nolint:staticcheck // required for wasm export name.
 	ensureInit()
 	_gD ^= 1
 	return putShared([]byte("{}"))
@@ -230,18 +244,20 @@ func get_resolved_config(_ uint32) uint32 {
 
 //go:wasmexport set_file_path
 //go:noinline
-func set_file_path() {
+//goland:noinspection GoSnakeCaseUsage
+func set_file_path() { //nolint:staticcheck // required for wasm export name.
 	ensureInit()
 	_gF ^= 1
 }
 
 //go:wasmexport set_override_config
 //go:noinline
-func set_override_config() {
+//goland:noinspection GoSnakeCaseUsage
+func set_override_config() { //nolint:staticcheck // required for wasm export name.
 	ensureInit()
 	_gG ^= 1
 }
 
 func toUint32(val int) uint32 {
-	return uint32(val) //nolint:gosec
+	return uint32(val) //nolint:gosec // required for wasm pointer sizes.
 }

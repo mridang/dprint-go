@@ -57,7 +57,7 @@ dprint fmt --log-level=debug
 
 #### Options
 
-This plugin mirrors `shfmt` and does not add custom options. If you pass an override config from dprint, it is accepted but ignored.
+This plugin mirrors `shfmt` and supports standard dprint indentation settings (tabs vs spaces, indent width). Additional shfmt-specific options are not exposed.
 
 ### tffmt
 
@@ -81,7 +81,7 @@ dprint fmt --log-level=debug
 
 #### Options
 
-This plugin mirrors `tf fmt` and does not add custom options. If you pass an override config from dprint, it is accepted but ignored.
+This plugin mirrors `terraform fmt` and does not add custom options. If you pass an override config from dprint, it is accepted but ignored.
 
 ### cuefmt
 
@@ -89,9 +89,9 @@ Add the cuefmt plugin to your **dprint** configuration to format CUE files.
 
 ```json
 {
-  "$schema": "[https://dprint.dev/schemas/v0.json](https://dprint.dev/schemas/v0.json)",
+  "$schema": "https://dprint.dev/schemas/v0.json",
   "plugins": [
-    "[https://github.com/mridang/dprint-goat/releases/download/v1.0.0/cuefmt.wasm](https://github.com/mridang/dprint-goat/releases/download/v1.0.0/cuefmt.wasm)"
+    "https://github.com/mridang/dprint-goat/releases/download/v1.0.0/cuefmt.wasm"
   ],
   "includes": [
     "**/*.cue"
@@ -113,9 +113,9 @@ Add the protofmt plugin to your **dprint** configuration to format Protobuf file
 
 ```json
 {
-  "$schema": "[https://dprint.dev/schemas/v0.json](https://dprint.dev/schemas/v0.json)",
+  "$schema": "https://dprint.dev/schemas/v0.json",
   "plugins": [
-    "[https://github.com/mridang/dprint-goat/releases/download/v1.0.0/protofmt.wasm](https://github.com/mridang/dprint-goat/releases/download/v1.0.0/protofmt.wasm)"
+    "https://github.com/mridang/dprint-goat/releases/download/v1.0.0/protofmt.wasm"
   ],
   "includes": [
     "**/*.proto"

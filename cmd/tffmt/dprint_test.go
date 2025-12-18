@@ -32,6 +32,8 @@ import (
 //
 // The test streams tool output on failures and uses timeouts to avoid
 // hanging in CI. It fails fast on any unmet precondition.
+//
+//goland:noinspection DuplicatedCode,DuplicatedCode
 func TestDprint_Formats_Tf_File(t *testing.T) {
 	requireInPath(t, "tinygo")
 	requireInPath(t, "dprint")

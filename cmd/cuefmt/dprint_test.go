@@ -34,6 +34,8 @@ import (
 //
 // The test streams tool output on failures and uses timeouts to avoid
 // hanging in CI. It fails fast on any unmet precondition.
+//
+//goland:noinspection DuplicatedCode,DuplicatedCode
 func TestDprint_Formats_Cue_File(t *testing.T) {
 	requireInPath(t, "tinygo")
 	requireInPath(t, "dprint")
@@ -111,9 +113,9 @@ func buildPluginWasm(t *testing.T) {
 		"-o=build/cuefmt.wasm",
 		"-target=wasm-unknown",
 		"-scheduler=none",
+		"-stack-size=4096kb",
 		"-no-debug",
 		"-opt=1",
-		"-panic=print",
 		"main.go",
 	)
 	runCmd(t, cmd, "tinygo build")

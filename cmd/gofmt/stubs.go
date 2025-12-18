@@ -12,6 +12,7 @@ package main
 // See: https://dprint.dev/plugins/wasm/#host_write_buffer
 //
 //go:wasmimport dprint host_write_buffer
+//nolint:revive,staticcheck // WASM exports require snake_case names.
 //goland:noinspection GoUnusedFunction, GoSnakeCaseUsage
 func host_write_buffer(ptr uint32)
 
@@ -32,6 +33,7 @@ func host_write_buffer(ptr uint32)
 // See: https://dprint.dev/plugins/wasm/#host_format
 //
 //go:wasmimport dprint host_format
+//nolint:revive,staticcheck // WASM exports require snake_case names.
 //goland:noinspection GoUnusedFunction,GoSnakeCaseUsage,GoUnusedParameter
 func host_format(filePathPtr, filePathLen, rangeStart, rangeEnd, overridePtr, overrideLen, fileBytesPtr, fileBytesLen uint32) uint32
 
@@ -41,6 +43,7 @@ func host_format(filePathPtr, filePathLen, rangeStart, rangeEnd, overridePtr, ov
 // See: https://dprint.dev/plugins/wasm/#host_get_formatted_text
 //
 //go:wasmimport dprint host_get_formatted_text
+//nolint:revive,staticcheck // WASM exports require snake_case names.
 //goland:noinspection GoUnusedFunction, GoSnakeCaseUsage
 func host_get_formatted_text() uint32
 
@@ -50,6 +53,7 @@ func host_get_formatted_text() uint32
 // See: https://dprint.dev/plugins/wasm/#host_get_error_text
 //
 //go:wasmimport dprint host_get_error_text
+//nolint:revive,staticcheck // WASM exports require snake_case names.
 //goland:noinspection GoUnusedFunction,GoSnakeCaseUsage
 func host_get_error_text() uint32
 
@@ -59,5 +63,6 @@ func host_get_error_text() uint32
 // See: https://dprint.dev/plugins/wasm/#host_has_cancelled
 //
 //go:wasmimport dprint host_has_cancelled
+//nolint:revive,staticcheck // WASM exports require snake_case names.
 //goland:noinspection GoUnusedFunction, GoSnakeCaseUsage
 func host_has_cancelled() uint32

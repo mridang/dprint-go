@@ -3,11 +3,15 @@
     "**/*.go",
     "**/*.sh",
     "**/*.bash",
-    "**/*.tf"
+    "**/*.tf",
+    "**/*.cue",
+    "**/*.proto"
   ],
   "plugins": [
     "./build/gofmt.wasm",
     "./build/shfmt.wasm",
-    "./build/tffmt.wasm"
+    "./build/tffmt.wasm",
+    "./build/cuefmt.wasm",
+    "./build/protofmt.wasm"
   ]
 }

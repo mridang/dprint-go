@@ -2,11 +2,15 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 
+	"github.com/mridang/dprint-plugin-go/internal/dprint"
 	"github.com/mridang/dprint-plugin-go/internal/wasm"
 	"github.com/wasmerio/wasmer-go/wasmer"
 )
@@ -15,6 +19,8 @@ import (
 // exports all the expected functions for the dprint V2 ABI. It builds the
 // TinyGo Wasm, strips any start section (which wasmer-go doesn't support),
 // and instantiates it with no-op dprint host imports.
+//
+//goland:noinspection DuplicatedCode
 func TestWasm_Exports_And_OptionalCall(t *testing.T) {
 	wasmBytes := buildTinyGoWasm(t)
 	wasmBytes = wasm.StripStartSection(wasmBytes)
@@ -89,6 +95,8 @@ func TestWasm_Exports_And_OptionalCall(t *testing.T) {
 	if got := v.(int32); got != 4 {
 		t.Fatalf("dprint_plugin_version_4 = %d; want 4", got)
 	}
+
+	assertWasmPluginInfo(t, instance)
 }
 
 // buildTinyGoWasm compiles the package in the current directory to a
@@ -105,8 +113,9 @@ func buildTinyGoWasm(t *testing.T) []byte {
 		"-o", out,
 		"-target=wasm-unknown",
 		"-scheduler=none",
+		"-stack-size=4096kb",
 		"-no-debug",
-		"-opt=2",
+		"-opt=1",
 		".", // Build the package in the current directory
 	)
 	cmd.Stdout = os.Stdout
@@ -123,6 +132,8 @@ func buildTinyGoWasm(t *testing.T) []byte {
 
 // registerNoOpDprint registers stub implementations of the host functions
 // that dprint provides to the Wasm module.
+//
+//goland:noinspection DuplicatedCode
 func registerNoOpDprint(t *testing.T, store *wasmer.Store, imports *wasmer.ImportObject) {
 	t.Helper()
 	newFunc := func(params, results []wasmer.ValueKind, f func([]wasmer.Value) ([]wasmer.Value, error)) *wasmer.Function {
@@ -172,4 +183,57 @@ func registerNoOpDprint(t *testing.T, store *wasmer.Store, imports *wasmer.Impor
 			),
 		},
 	)
+}
+
+//goland:noinspection DuplicatedCode
+func assertWasmPluginInfo(t *testing.T, instance *wasmer.Instance) {
+	t.Helper()
+
+	infoFn, err := instance.Exports.GetFunction("get_plugin_info")
+	if err != nil {
+		t.Fatalf("get get_plugin_info: %v", err)
+	}
+	sizeVal, err := infoFn()
+	if err != nil {
+		t.Fatalf("call get_plugin_info: %v", err)
+	}
+	size := uint32(sizeVal.(int32))
+	if size == 0 {
+		t.Fatalf("get_plugin_info returned 0")
+	}
+
+	data := readSharedBytes(t, instance, size)
+	var info dprint.PluginInfo
+	if unmarshalErr := json.Unmarshal(data, &info); unmarshalErr != nil {
+		t.Fatalf("unmarshal plugin info: %v", unmarshalErr)
+	}
+	if info.Version != strings.TrimSpace(versionFile) {
+		t.Fatalf("wasm plugin version = %q; want %q", info.Version, strings.TrimSpace(versionFile))
+	}
+}
+
+//goland:noinspection DuplicatedCode
+func readSharedBytes(t *testing.T, instance *wasmer.Instance, size uint32) []byte {
+	t.Helper()
+
+	ptrFn, err := instance.Exports.GetFunction("get_shared_bytes_ptr")
+	if err != nil {
+		t.Fatalf("get get_shared_bytes_ptr: %v", err)
+	}
+	ptrVal, err := ptrFn()
+	if err != nil {
+		t.Fatalf("call get_shared_bytes_ptr: %v", err)
+	}
+	ptr := uint32(ptrVal.(int32))
+
+	mem, err := instance.Exports.GetMemory("memory")
+	if err != nil {
+		t.Fatalf("get memory: %v", err)
+	}
+	data := mem.Data()
+	end := int(ptr + size)
+	if end > len(data) {
+		t.Fatalf("shared buffer exceeds memory: %d > %d", end, len(data))
+	}
+	return slices.Clone(data[ptr:end])
 }

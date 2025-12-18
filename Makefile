@@ -1,4 +1,4 @@
-.PHONY: default build build-gofmt build-shfmt build-tffmt build-cuefmt build-protofmt lint test test-gofmt test-shfmt test-tffmt test-cuefmt test-protofmt vendor clean format patch-buf
+.PHONY: default build build-gofmt build-shfmt build-tffmt build-cuefmt build-protofmt lint test test-gofmt test-shfmt test-tffmt test-cuefmt test-protofmt vendor clean format
 
 export GO111MODULE=on
 
@@ -27,7 +27,7 @@ build-tffmt:
 build-cuefmt:
 	mkdir -p build
 	# CUE is recursive; increase stack size to prevent "unreachable" (stack overflow) errors.
-	tinygo build -o=build/cuefmt.wasm -target=wasm-unknown -scheduler=none -stack-size=128kb -no-debug -opt=1 ./cmd/cuefmt
+	tinygo build -o=build/cuefmt.wasm -target=wasm-unknown -scheduler=none -stack-size=4096kb -no-debug -opt=1 ./cmd/cuefmt
 	go run ./cmd/addstart/main.go build/cuefmt.wasm build/cuefmt-fixed.wasm
 	mv build/cuefmt-fixed.wasm build/cuefmt.wasm
 
@@ -60,8 +60,8 @@ test-tffmt:
 test-cuefmt:
 	GOFLAGS= CGO_ENABLED=1 go test -mod=mod -v=true -cover=true -count=1 ./cmd/cuefmt
 
-# Run tests only in protofmt command package (depends on patch-buf)
-test-protofmt: patch-buf
+# Run tests only in protofmt command package
+test-protofmt:
 	GOFLAGS= CGO_ENABLED=1 go test -mod=mod -v=true -cover=true -count=1 ./cmd/protofmt
 
 vendor:

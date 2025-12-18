@@ -5,10 +5,11 @@ TMPDIR=$(mktemp -d)
 cd "$TMPDIR"
 
 echo "Downloading formatters from latest release..."
-RELEASE_URL="https://github.com/mridang/dprint-go/releases/latest/download"
+RELEASE_URL="https://github.com/mridang/dprint-goat/releases/latest/download"
 curl -sL "$RELEASE_URL/gofmt.wasm" -o gofmt.wasm
 curl -sL "$RELEASE_URL/shfmt.wasm" -o shfmt.wasm
 curl -sL "$RELEASE_URL/tffmt.wasm" -o tffmt.wasm
+curl -sL "$RELEASE_URL/cuefmt.wasm" -o cuefmt.wasm
 curl -sL "$RELEASE_URL/protofmt.wasm" -o protofmt.wasm
 
 cat > dprint.json << 'EOF'
@@ -18,12 +19,14 @@ cat > dprint.json << 'EOF'
     "**/*.sh",
     "**/*.bash",
     "**/*.tf",
+    "**/*.cue",
     "**/*.proto"
   ],
   "plugins": [
     "./gofmt.wasm",
     "./shfmt.wasm",
     "./tffmt.wasm",
+    "./cuefmt.wasm",
     "./protofmt.wasm"
   ]
 }
@@ -69,9 +72,19 @@ rpc GetUser(User)returns(User);
 }
 EOF
 
+cat > schema.cue << 'EOF'
+package main
+import "list"
+foo:  {
+  bar: "baz"
+  num: 1
+}
+EOF
+
 cp main.go main.go.bak
 cp script.sh script.sh.bak
 cp main.tf main.tf.bak
+cp schema.cue schema.cue.bak
 cp service.proto service.proto.bak
 
 dprint fmt
@@ -84,5 +97,7 @@ echo -e "\n=== main.tf ==="
 diff -y --width=150 main.tf.bak main.tf || true
 echo -e "\n=== service.proto ==="
 diff -y --width=150 service.proto.bak service.proto || true
+echo -e "\n=== schema.cue ==="
+diff -y --width=150 schema.cue.bak schema.cue || true
 
 echo -e "\nTest directory: $TMPDIR"

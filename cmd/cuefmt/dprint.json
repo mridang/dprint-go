@@ -1,0 +1,8 @@
+{
+  "includes": [
+    "**/*.cue"
+  ],
+  "plugins": [
+    "./build/cuefmt.wasm"
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.10.7/.schema/devbox.schema.json",
+  "packages": {
+    "dprint":   "latest",
+    "tinygo":   "latest",
+    "wabt":     "latest",
+    "go":       "1.25",
+    "wasmtime": "latest",
+    "wasmer":   "latest",
+    "wasm3": {
+      "version":        "latest",
+      "allow_insecure": ["wasm3-0.5.0"]
+    },
+    "python38":                                            "latest",
+    "github:NixOS/nixpkgs/nixpkgs-unstable#golangci-lint": ""
+  },
+  "env": {
+    "GOMODCACHE": "$PWD/.go"
+  },
+  "shell": {
+    "init_hook": [
+      "go mod download"
+    ],
+    "scripts": {
+      "test":   "go test ./...",
+      "build":  "go build ./pkg/...",
+      "lint":   "golangci-lint run --fix",
+      "format": "go fmt ./..."
+    }
+  }
+}

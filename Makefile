@@ -1,35 +1,34 @@
-.PHONY: default build build-gofmt build-shfmt build-tffmt lint test test-gofmt test-shfmt test-tffmt vendor clean format
+.PHONY: default build build-gofmt build-shfmt build-tffmt build-cuefmt build-protofmt lint test test-gofmt test-shfmt test-tffmt test-cuefmt test-protofmt vendor clean format
 
 export GO111MODULE=on
 
+ROOT_BUILD_DIR := $(abspath build)
+
 default: build
 
-build: build-gofmt build-shfmt build-tffmt
+build: build-gofmt build-shfmt build-tffmt build-cuefmt build-protofmt
 
 build-gofmt:
-	mkdir -p build
-	tinygo build -o=build/gofmt.wasm -target=wasm-unknown -scheduler=none -no-debug -opt=2 ./cmd/gofmt
-	go run ./cmd/addstart/main.go build/gofmt.wasm build/gofmt-fixed.wasm
-	mv build/gofmt-fixed.wasm build/gofmt.wasm
+	$(MAKE) -C cmd/gofmt build OUT_DIR=$(ROOT_BUILD_DIR)
 
 build-shfmt:
-	mkdir -p build
-	tinygo build -o=build/shfmt.wasm -target=wasm-unknown -scheduler=none -no-debug -opt=2 ./cmd/shfmt
-	go run ./cmd/addstart/main.go build/shfmt.wasm build/shfmt-fixed.wasm
-	mv build/shfmt-fixed.wasm build/shfmt.wasm
+	$(MAKE) -C cmd/shfmt build OUT_DIR=$(ROOT_BUILD_DIR)
 
 build-tffmt:
-	mkdir -p build
-	tinygo build -o=build/tffmt.wasm -target=wasm-unknown -scheduler=none -no-debug -opt=2 ./cmd/tffmt
-	go run ./cmd/addstart/main.go build/tffmt.wasm build/tffmt-fixed.wasm
-	mv build/tffmt-fixed.wasm build/tffmt.wasm
+	$(MAKE) -C cmd/tffmt build OUT_DIR=$(ROOT_BUILD_DIR)
+
+build-cuefmt:
+	$(MAKE) -C cmd/cuefmt build OUT_DIR=$(ROOT_BUILD_DIR)
+
+build-protofmt:
+	$(MAKE) -C cmd/protofmt build OUT_DIR=$(ROOT_BUILD_DIR)
 
 lint:
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	golangci-lint run --verbose
 
 # Force module mode and CGO so wasmer-go finds its packaged libs.
-test: test-gofmt test-shfmt test-tffmt
+test: test-gofmt test-shfmt test-tffmt test-cuefmt test-protofmt
 
 # Run tests only in gofmt command package
 test-gofmt:
@@ -42,6 +41,14 @@ test-shfmt:
 # Run tests only in tffmt command package
 test-tffmt:
 	GOFLAGS= CGO_ENABLED=1 go test -mod=mod -v=true -cover=true -count=1 ./cmd/tffmt
+
+# Run tests only in cuefmt command package
+test-cuefmt:
+	GOFLAGS= CGO_ENABLED=1 go test -mod=mod -v=true -cover=true -count=1 ./cmd/cuefmt
+
+# Run tests only in protofmt command package
+test-protofmt:
+	GOFLAGS= CGO_ENABLED=1 go test -mod=mod -v=true -cover=true -count=1 ./cmd/protofmt
 
 vendor:
 	go mod vendor

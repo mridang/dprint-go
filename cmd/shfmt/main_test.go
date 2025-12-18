@@ -105,25 +105,16 @@ func TestWasm_Exports_And_OptionalCall(t *testing.T) {
 //goland:noinspection DuplicatedCode
 func buildTinyGoWasm(t *testing.T) []byte {
 	t.Helper()
-	if _, err := exec.LookPath("tinygo"); err != nil {
-		t.Fatalf("tinygo not found in PATH: %v", err)
+	if _, err := exec.LookPath("make"); err != nil {
+		t.Fatalf("make not found in PATH: %v", err)
 	}
-	dir := t.TempDir()
-	out := filepath.Join(dir, "shfmt.wasm")
-	cmd := exec.Command(
-		"tinygo", "build",
-		"-o", out,
-		"-target=wasm-unknown",
-		"-scheduler=none",
-		"-no-debug",
-		"-opt=2",
-		".", // Build the package in the current directory
-	)
+	cmd := exec.Command("make", "build")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		t.Fatalf("tinygo build failed: %v", err)
+		t.Fatalf("make build failed: %v", err)
 	}
+	out := filepath.Join("build", "shfmt.wasm")
 	bin, err := os.ReadFile(out)
 	if err != nil {
 		t.Fatalf("read wasm: %v", err)

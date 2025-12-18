@@ -103,26 +103,16 @@ func TestWasm_Exports_And_OptionalCall(t *testing.T) {
 // Wasm module using TinyGo.
 func buildTinyGoWasm(t *testing.T) []byte {
 	t.Helper()
-	if _, err := exec.LookPath("tinygo"); err != nil {
-		t.Fatalf("tinygo not found in PATH: %v", err)
+	if _, err := exec.LookPath("make"); err != nil {
+		t.Fatalf("make not found in PATH: %v", err)
 	}
-	dir := t.TempDir()
-	out := filepath.Join(dir, "gofmt.wasm")
-	cmd := exec.Command(
-		"tinygo", "build",
-		"-o", out,
-		"-target=wasm-unknown",
-		"-scheduler=none",
-		"-stack-size=4096kb",
-		"-no-debug",
-		"-opt=1",
-		".", // Build the package in the current directory
-	)
+	cmd := exec.Command("make", "build")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		t.Fatalf("tinygo build failed: %v", err)
+		t.Fatalf("make build failed: %v", err)
 	}
+	out := filepath.Join("build", "cuefmt.wasm")
 	bin, err := os.ReadFile(out)
 	if err != nil {
 		t.Fatalf("read wasm: %v", err)

@@ -57,6 +57,7 @@ func putShared(b []byte) uint32 {
 //
 //go:wasmexport get_shared_bytes_ptr
 //go:noinline
+//nolint:revive,staticcheck // WASM exports require snake_case names.
 //goland:noinspection GoSnakeCaseUsage
 func get_shared_bytes_ptr() uint32 { //nolint:staticcheck // required for wasm export name.
 	ensureInit()
@@ -69,6 +70,7 @@ func get_shared_bytes_ptr() uint32 { //nolint:staticcheck // required for wasm e
 //
 //go:wasmexport clear_shared_bytes
 //go:noinline
+//nolint:revive,staticcheck // WASM exports require snake_case names.
 //goland:noinspection GoSnakeCaseUsage
 func clear_shared_bytes(size uint32) uint32 { //nolint:staticcheck // required for wasm export name.
 	ensureInit()
@@ -86,6 +88,7 @@ func clear_shared_bytes(size uint32) uint32 { //nolint:staticcheck // required f
 //
 //go:wasmexport dprint_plugin_version_4
 //go:noinline
+//nolint:revive,staticcheck // WASM exports require snake_case names.
 //goland:noinspection GoSnakeCaseUsage
 func dprint_plugin_version_4() uint32 { //nolint:staticcheck // required for wasm export name.
 	ensureInit()
@@ -98,6 +101,7 @@ func dprint_plugin_version_4() uint32 { //nolint:staticcheck // required for was
 //
 //go:wasmexport get_plugin_info
 //go:noinline
+//nolint:revive,staticcheck // WASM exports require snake_case names.
 //goland:noinspection GoSnakeCaseUsage
 func get_plugin_info() uint32 { //nolint:staticcheck // required for wasm export name.
 	ensureInit()
@@ -127,6 +131,7 @@ func get_plugin_info() uint32 { //nolint:staticcheck // required for wasm export
 //
 //go:wasmexport get_license_text
 //go:noinline
+//nolint:revive,staticcheck // WASM exports require snake_case names.
 //goland:noinspection GoSnakeCaseUsage
 func get_license_text() uint32 { //nolint:staticcheck // required for wasm export name.
 	ensureInit()
@@ -139,6 +144,7 @@ func get_license_text() uint32 { //nolint:staticcheck // required for wasm expor
 //
 //go:wasmexport get_config_file_matching
 //go:noinline
+//nolint:revive,staticcheck // WASM exports require snake_case names.
 //goland:noinspection GoSnakeCaseUsage
 func get_config_file_matching(_ uint32) uint32 { //nolint:staticcheck // required for wasm export name.
 	ensureInit()
@@ -208,6 +214,7 @@ func format(_ uint32) uint32 {
 //
 //go:wasmexport get_formatted_text
 //go:noinline
+//nolint:revive,staticcheck // WASM exports require snake_case names.
 //goland:noinspection GoSnakeCaseUsage
 func get_formatted_text() uint32 { //nolint:staticcheck // required for wasm export name.
 	ensureInit()
@@ -220,6 +227,7 @@ func get_formatted_text() uint32 { //nolint:staticcheck // required for wasm exp
 //
 //go:wasmexport get_error_text
 //go:noinline
+//nolint:revive,staticcheck // WASM exports require snake_case names.
 //goland:noinspection GoSnakeCaseUsage
 func get_error_text() uint32 { //nolint:staticcheck // required for wasm export name.
 	ensureInit()
@@ -249,6 +257,7 @@ var (
 //
 //go:wasmexport register_config
 //go:noinline
+//nolint:revive,staticcheck // WASM exports require snake_case names.
 //goland:noinspection GoSnakeCaseUsage
 func register_config(_ uint32) { //nolint:staticcheck // required for wasm export name.
 	ensureInit()
@@ -260,6 +269,7 @@ func register_config(_ uint32) { //nolint:staticcheck // required for wasm expor
 //
 //go:wasmexport release_config
 //go:noinline
+//nolint:revive,staticcheck // WASM exports require snake_case names.
 //goland:noinspection GoSnakeCaseUsage
 func release_config(_ uint32) { //nolint:staticcheck // required for wasm export name.
 	ensureInit()
@@ -272,6 +282,7 @@ func release_config(_ uint32) { //nolint:staticcheck // required for wasm export
 //
 //go:wasmexport get_config_diagnostics
 //go:noinline
+//nolint:revive,staticcheck // WASM exports require snake_case names.
 //goland:noinspection GoSnakeCaseUsage
 func get_config_diagnostics(_ uint32) uint32 { //nolint:staticcheck // required for wasm export name.
 	ensureInit()
@@ -285,6 +296,7 @@ func get_config_diagnostics(_ uint32) uint32 { //nolint:staticcheck // required 
 //
 //go:wasmexport get_resolved_config
 //go:noinline
+//nolint:revive,staticcheck // WASM exports require snake_case names.
 //goland:noinspection GoSnakeCaseUsage
 func get_resolved_config(_ uint32) uint32 { //nolint:staticcheck // required for wasm export name.
 	ensureInit()
@@ -298,6 +310,7 @@ func get_resolved_config(_ uint32) uint32 { //nolint:staticcheck // required for
 //
 //go:wasmexport set_file_path
 //go:noinline
+//nolint:revive,staticcheck // WASM exports require snake_case names.
 //goland:noinspection GoSnakeCaseUsage
 func set_file_path() { //nolint:staticcheck // required for wasm export name.
 	ensureInit()
@@ -310,6 +323,7 @@ func set_file_path() { //nolint:staticcheck // required for wasm export name.
 //
 //go:wasmexport set_override_config
 //go:noinline
+//nolint:revive,staticcheck // WASM exports require snake_case names.
 //goland:noinspection GoSnakeCaseUsage
 func set_override_config() { //nolint:staticcheck // required for wasm export name.
 	ensureInit()

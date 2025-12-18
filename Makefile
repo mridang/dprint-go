@@ -2,40 +2,26 @@
 
 export GO111MODULE=on
 
+ROOT_BUILD_DIR := $(abspath build)
+
 default: build
 
 build: build-gofmt build-shfmt build-tffmt build-cuefmt build-protofmt
 
 build-gofmt:
-	mkdir -p build
-	tinygo build -o=build/gofmt.wasm -target=wasm-unknown -scheduler=none -no-debug -opt=2 ./cmd/gofmt
-	go run ./cmd/addstart/main.go build/gofmt.wasm build/gofmt-fixed.wasm
-	mv build/gofmt-fixed.wasm build/gofmt.wasm
+	$(MAKE) -C cmd/gofmt build OUT_DIR=$(ROOT_BUILD_DIR)
 
 build-shfmt:
-	mkdir -p build
-	tinygo build -o=build/shfmt.wasm -target=wasm-unknown -scheduler=none -no-debug -opt=2 ./cmd/shfmt
-	go run ./cmd/addstart/main.go build/shfmt.wasm build/shfmt-fixed.wasm
-	mv build/shfmt-fixed.wasm build/shfmt.wasm
+	$(MAKE) -C cmd/shfmt build OUT_DIR=$(ROOT_BUILD_DIR)
 
 build-tffmt:
-	mkdir -p build
-	tinygo build -o=build/tffmt.wasm -target=wasm-unknown -scheduler=none -no-debug -opt=2 ./cmd/tffmt
-	go run ./cmd/addstart/main.go build/tffmt.wasm build/tffmt-fixed.wasm
-	mv build/tffmt-fixed.wasm build/tffmt.wasm
+	$(MAKE) -C cmd/tffmt build OUT_DIR=$(ROOT_BUILD_DIR)
 
 build-cuefmt:
-	mkdir -p build
-	# CUE is recursive; increase stack size to prevent "unreachable" (stack overflow) errors.
-	tinygo build -o=build/cuefmt.wasm -target=wasm-unknown -scheduler=none -stack-size=4096kb -no-debug -opt=1 ./cmd/cuefmt
-	go run ./cmd/addstart/main.go build/cuefmt.wasm build/cuefmt-fixed.wasm
-	mv build/cuefmt-fixed.wasm build/cuefmt.wasm
+	$(MAKE) -C cmd/cuefmt build OUT_DIR=$(ROOT_BUILD_DIR)
 
 build-protofmt:
-	mkdir -p build
-	tinygo build -o=build/protofmt.wasm -target=wasm-unknown -scheduler=none -stack-size=128kb -no-debug -opt=1 ./cmd/protofmt
-	go run ./cmd/addstart/main.go build/protofmt.wasm build/protofmt-fixed.wasm
-	mv build/protofmt-fixed.wasm build/protofmt.wasm
+	$(MAKE) -C cmd/protofmt build OUT_DIR=$(ROOT_BUILD_DIR)
 
 lint:
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest

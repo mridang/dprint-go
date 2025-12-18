@@ -17,37 +17,33 @@ import (
 // TestDprint_Formats_Proto_File verifies end-to-end formatting using dprint
 // and the TinyGo-built plugin.
 //
-// The test builds the WebAssembly plugin with TinyGo, injects a start
-// section via the repository helper, writes a deliberately malformed Proto
-// file in a temporary directory, invokes `dprint fmt` with the repo
-// configuration, and asserts the resulting file bytes match the
-// canonical output from protofmt. It then runs dprint a second time to
-// assert idempotence.
+// The test builds the WebAssembly plugin using the local Makefile target,
+// writes a deliberately malformed Proto file in a temporary directory,
+// invokes `dprint fmt` with the repo configuration, and asserts the
+// resulting file bytes match the canonical output from protofmt. It then
+// runs dprint a second time to assert idempotence.
 //
 // Preconditions:
 //
+//   - `make` is available in PATH.
 //   - `tinygo` is available in PATH.
 //   - `dprint` is available in PATH.
 //   - `dprint.json` exists in the repository root and references the
 //     plugin artifact at `build/protofmt.wasm`.
-//   - The helper `cmd/addstart/main.go` exists to inject a start section
-//     that calls `_initialize`.
 //
 // The test streams tool output on failures and uses timeouts to avoid
 // hanging in CI. It fails fast on any unmet precondition.
 //
 //goland:noinspection DuplicatedCode,DuplicatedCode
 func TestDprint_Formats_Proto_File(t *testing.T) {
+	requireInPath(t, "make")
 	requireInPath(t, "tinygo")
 	requireInPath(t, "dprint")
 
 	pkgDir := getwdOrFatal(t)
-	repoRoot := filepath.Join(pkgDir, "..", "..")
 	requireFile(t, filepath.Join(pkgDir, "dprint.json"))
-	requireFile(t, filepath.Join(repoRoot, "cmd", "addstart", "main.go"))
 
 	buildPluginWasm(t)
-	injectStartSection(t, repoRoot)
 
 	td := t.TempDir()
 	srcPath := filepath.Join(td, "test.proto")
@@ -105,47 +101,15 @@ int32 bar=1;
 // same flags as production. A timeout is applied to prevent hangs.
 func buildPluginWasm(t *testing.T) {
 	t.Helper()
-
-	if err := os.MkdirAll("build", 0o755); err != nil {
-		t.Fatalf("mkdir build: %v", err)
+	if _, err := exec.LookPath("make"); err != nil {
+		t.Fatalf("make not found in PATH: %v", err)
 	}
 
 	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
 	defer cancel()
 
-	cmd := exec.CommandContext(
-		ctx,
-		"tinygo", "build",
-		"-o=build/protofmt.wasm",
-		"-target=wasm-unknown",
-		"-scheduler=none",
-		"-no-debug",
-		"-opt=2",
-		"main.go",
-	)
-	runCmd(t, cmd, "tinygo build")
-}
-
-// injectStartSection runs the helper to inject a start section and
-// replaces build/protofmt.wasm with the fixed output.
-func injectStartSection(t *testing.T, repoRoot string) {
-	t.Helper()
-
-	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
-	defer cancel()
-
-	addstartPath := filepath.Join(repoRoot, "cmd", "addstart", "main.go")
-	cmd := exec.CommandContext(
-		ctx,
-		"go", "run", addstartPath,
-		"build/protofmt.wasm",
-		"build/dprint-fixed.wasm",
-	)
-	runCmd(t, cmd, "addstart")
-
-	if err := os.Rename("build/dprint-fixed.wasm", "build/protofmt.wasm"); err != nil {
-		t.Fatalf("rename fixed wasm: %v", err)
-	}
+	cmd := exec.CommandContext(ctx, "make", "build")
+	runCmd(t, cmd, "make build")
 }
 
 // runDprintFmt executes `dprint fmt` inside workDir with explicit

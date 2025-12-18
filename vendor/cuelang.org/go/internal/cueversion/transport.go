@@ -1,5 +1,5 @@
-//go:build !tinygo
-// +build !tinygo
+//go:build !wasm
+// +build !wasm
 
 package cueversion
 

@@ -124,7 +124,7 @@ func (f *Formatter) VisitOption(o *proto.Option) {
 
 func (f *Formatter) formatLiteral(l *proto.Literal) {
 	if len(l.OrderedMap) == 0 && len(l.Array) == 0 && len(l.Source) == 0 {
-		if (l.IsString) {
+		if l.IsString {
 			fmt.Fprintf(f.w, "\"\"")
 		} else {
 			fmt.Fprintf(f.w, "{}")

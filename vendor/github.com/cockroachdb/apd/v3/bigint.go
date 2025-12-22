@@ -73,7 +73,6 @@ func NewBigInt(x int64) *BigInt {
 var negSentinel = new(big.Int)
 
 // isInline returns whether the BigInt stores its value in its _inline array.
-//
 //gcassert:inline
 func (z *BigInt) isInline() bool {
 	return z._inner == nil || z._inner == negSentinel
@@ -94,7 +93,6 @@ type intStruct struct {
 // This was copied from strings.Builder, which has identical code which was
 // itself copied from the runtime.
 // For more, see issues #23382 and #7921 in github.com/golang/go.
-//
 //go:nosplit
 //go:nocheckptr
 func noescape(p unsafe.Pointer) unsafe.Pointer {
@@ -107,7 +105,6 @@ func noescape(p unsafe.Pointer) unsafe.Pointer {
 //
 // NOTE: this was carefully written to permit function inlining. Modify with
 // care.
-//
 //gcassert:inline
 func (z *BigInt) inner(tmp *big.Int) *big.Int {
 	// Point the big.Int at the inline array. When doing so, use noescape to
@@ -171,7 +168,6 @@ func (z *BigInt) innerOrNilOrAlias(tmp *big.Int, a *BigInt, ai *big.Int) *big.In
 //
 // NOTE: this was carefully written to permit function inlining. Modify with
 // care.
-//
 //gcassert:inline
 func (z *BigInt) updateInner(src *big.Int) {
 	if z._inner == src {
@@ -225,7 +221,6 @@ func init() {
 //
 // NOTE: this was carefully written to permit function inlining. Modify with
 // care.
-//
 //gcassert:inline
 func (z *BigInt) innerAsUint64() (val uint64, neg bool, ok bool) {
 	if !z.isInline() {
@@ -262,7 +257,6 @@ func (z *BigInt) innerAsUint64() (val uint64, neg bool, ok bool) {
 //
 // NOTE: this was carefully written to permit function inlining. Modify with
 // care.
-//
 //gcassert:inline
 func (z *BigInt) updateInnerFromUint64(val uint64, neg bool) {
 	// Set the inline value.

@@ -52,7 +52,6 @@ func init() {
 }
 
 // NumDigits returns the number of decimal digits of d.Coeff.
-//
 //gcassert:inline
 func (d *Decimal) NumDigits() int64 {
 	return NumDigits(&d.Coeff)

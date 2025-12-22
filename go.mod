@@ -5,7 +5,7 @@ go 1.25.2
 require (
 	cuelang.org/go v0.15.1
 	github.com/emicklei/proto v1.14.2
-	github.com/emicklei/proto-contrib v0.18.2
+	github.com/emicklei/proto-contrib v0.18.3
 	github.com/hashicorp/hcl/v2 v2.24.0
 	github.com/wasmerio/wasmer-go v1.0.4
 	mvdan.cc/sh/v3 v3.12.0

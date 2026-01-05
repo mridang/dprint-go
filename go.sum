@@ -1,7 +1,7 @@
 cuelabs.dev/go/oci/ociregistry v0.0.0-20250722084951-074d06050084 h1:4k1yAtPvZJZQTu8DRY8muBo0LHv6TqtrE0AO5n6IPYs=
 cuelabs.dev/go/oci/ociregistry v0.0.0-20250722084951-074d06050084/go.mod h1:4WWeZNxUO1vRoZWAHIG0KZOd6dA25ypyWuwD3ti0Tdc=
-cuelang.org/go v0.15.1 h1:MRnjc/KJE+K42rnJ3a+425f1jqXeOOgq9SK4tYRTtWw=
-cuelang.org/go v0.15.1/go.mod h1:NYw6n4akZcTjA7QQwJ1/gqWrrhsN4aZwhcAL0jv9rZE=
+cuelang.org/go v0.15.3 h1:JKR/lZVwuIGlLTGIaJ0jONz9+CK3UDx06sQ6DDxNkaE=
+cuelang.org/go v0.15.3/go.mod h1:NYw6n4akZcTjA7QQwJ1/gqWrrhsN4aZwhcAL0jv9rZE=
 github.com/agext/levenshtein v1.2.3 h1:YB2fHEn0UJagG8T1rrWknE3ZQzWM06O8AMAatNn7lmo=
 github.com/agext/levenshtein v1.2.3/go.mod h1:JEDfjyjHDjOF/1e4FlBE/PkbqA9OfWu2ki2W0IB5558=
 github.com/apparentlymart/go-textseg/v15 v15.0.0 h1:uYvfpb3DyLSCGWnctWKGj857c6ew1u1fNQOlOtuGxQY=
@@ -11,11 +11,10 @@ github.com/cockroachdb/apd/v3 v3.2.1/go.mod h1:klXJcjp+FffLTHlhIG69tezTDvdP065na
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/emicklei/proto v1.14.0/go.mod h1:rn1FgRS/FANiZdD2djyH7TMA9jdRDcYQ9IEN9yvjX0A=
 github.com/emicklei/proto v1.14.2 h1:wJPxPy2Xifja9cEMrcA/g08art5+7CGJNFNk35iXC1I=
 github.com/emicklei/proto v1.14.2/go.mod h1:rn1FgRS/FANiZdD2djyH7TMA9jdRDcYQ9IEN9yvjX0A=
-github.com/emicklei/proto-contrib v0.18.2 h1:/3HbJnGuiT5x4TgGQjRkPYR5QP2i8sgUgeNbpmOEq+U=
-github.com/emicklei/proto-contrib v0.18.2/go.mod h1:0jnPdGJOjrTDObeFfSM1XKx1Z/mjJzYMomI69tJIq58=
+github.com/emicklei/proto-contrib v0.18.3 h1:9oRTvju6XJGaFGS9+L7uKezZ+kHsHzrhQLRd61wHITY=
+github.com/emicklei/proto-contrib v0.18.3/go.mod h1:ggABzMqvKOVR7NbS2IDjVnKvxM7eyHrGaTqbQXVRtQk=
 github.com/go-quicktest/qt v1.101.0 h1:O1K29Txy5P2OK0dGo59b7b0LR6wKfIhttaAhHUyn7eI=
 github.com/go-quicktest/qt v1.101.0/go.mod h1:14Bz/f7NwaXPtdYEgzsx46kqSxVwTbzVZsDC26tQJow=
 github.com/go-test/deep v1.0.3 h1:ZrJSEWsXzPOxaZnFteGEfooLba+ju3FYIbOrS+rQd68=

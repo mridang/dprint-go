@@ -31,3 +31,4 @@ build
 .devbox
 devbox.lock
 .go
+.out

@@ -5,6 +5,7 @@
     "tinygo":   "latest",
     "wabt":     "latest",
     "go":       "1.25",
+    "gotestsum": "latest",
     "wasmtime": "latest",
     "wasmer":   "latest",
     "wasm3": {
@@ -22,7 +23,7 @@
       "go mod download"
     ],
     "scripts": {
-      "test":   "go test ./...",
+      "test":   "make test",
       "build":  "go build ./pkg/...",
       "lint":   "golangci-lint run --fix",
       "format": "go fmt ./..."

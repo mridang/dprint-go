@@ -25,20 +25,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-docker-
 
-#      - name: Docker pull
-#        run: |
-#          IMAGES_DIR="./docker_images"
-#          COMBINED_IMAGES_TAR="$IMAGES_DIR/combined_images.tar"
-#
-#          if [ -f "$COMBINED_IMAGES_TAR" ]; then
-#          docker image load -i "$COMBINED_IMAGES_TAR"
-#          else
-#          mkdir -p "$IMAGES_DIR"
-#          IMAGES=$(docker compose config --images)
-#          docker pull $IMAGES
-#          docker image save -o "$COMBINED_IMAGES_TAR" $IMAGES
-#          fi
-
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
@@ -50,4 +36,13 @@ jobs:
           tinygo-version: '0.39.0'
 
       - name: Run Tests
-        run: make test
+        run: |
+          go install gotest.tools/gotestsum@latest
+          make test
+
+      - name: Generate coverage report
+        if: always()
+        uses: mridang/action-test-reporter@v3
+        with:
+          results-path: '.out/junit.xml'
+          coverage-path: '.out/lcov.info'

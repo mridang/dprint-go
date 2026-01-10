@@ -37,6 +37,6 @@ jobs:
           npm install --global @semantic-release/exec
 
       - name: Run semantic-release
-        uses: mridang/action-semantic-release@v1.0.0
+        uses: mridang/action-semantic-release@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}

@@ -3,7 +3,7 @@ name: Lint Code (Golint)
 on: push
 
 permissions:
-  contents: write
+  contents: read
 
 defaults:
   run:

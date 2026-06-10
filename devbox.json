@@ -16,7 +16,9 @@
     "github:NixOS/nixpkgs/nixpkgs-unstable#golangci-lint": ""
   },
   "env": {
-    "GOMODCACHE": "$PWD/.go"
+    "GOMODCACHE": "$PWD/.go",
+    "GOTOOLCHAIN": "local",
+    "GOROOT": null
   },
   "shell": {
     "init_hook": [

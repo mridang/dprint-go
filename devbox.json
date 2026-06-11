@@ -16,14 +16,11 @@
     "github:NixOS/nixpkgs/nixpkgs-unstable#golangci-lint": ""
   },
   "env": {
-    "GOMODCACHE": "$PWD/.go",
+    "GOMODCACHE": "$DEVBOX_PROJECT_ROOT/.go",
     "GOTOOLCHAIN": "local",
     "GOROOT": null
   },
   "shell": {
-    "init_hook": [
-      "go mod download"
-    ],
     "scripts": {
       "test":   "make test",
       "build":  "go build ./pkg/...",

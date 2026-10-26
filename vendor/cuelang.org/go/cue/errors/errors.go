@@ -151,8 +151,7 @@ func Positions(err error) []token.Pos {
 	// TODO if the Error we found wraps another error that itself
 	// has positions, we won't return them here but perhaps we should?
 
-	// TODO(mvdan): we can use [token.Pos.Compare] here and no tests break.
-	slices.SortFunc(a[sortOffset:], comparePosWithNoPosFirst)
+	slices.SortFunc(a[sortOffset:], token.Pos.Compare)
 	return slices.Compact(a)
 }
 
@@ -162,9 +161,9 @@ func Positions(err error) []token.Pos {
 func comparePosWithNoPosFirst(a, b token.Pos) int {
 	if a == b {
 		return 0
-	} else if a == token.NoPos {
+	} else if !a.IsValid() {
 		return -1
-	} else if b == token.NoPos {
+	} else if !b.IsValid() {
 		return +1
 	}
 	return token.Pos.Compare(a, b)
@@ -255,7 +254,7 @@ func (e *wrapped) InputPositions() []token.Pos {
 }
 
 func (e *wrapped) Position() token.Pos {
-	if p := e.main.Position(); p != token.NoPos {
+	if p := e.main.Position(); p.IsValid() {
 		return p
 	}
 	if wrap, ok := e.wrap.(Error); ok {
@@ -399,33 +398,64 @@ func (p list) sanitize() list {
 	return a
 }
 
-// sort sorts a list. *posError entries are sorted by position,
-// other errors are sorted by error message, and before any *posError entry.
-func (p list) sort() {
-	slices.SortFunc(p, func(a, b Error) int {
-		if c := comparePosWithNoPosFirst(a.Position(), b.Position()); c != 0 {
-			return c
-		}
-		if c := slices.Compare(a.Path(), b.Path()); c != 0 {
-			return c
-		}
-		return cmp.Compare(a.Error(), b.Error())
-	})
-}
-
-// removeMultiples sorts a list and removes all but the first error per line.
+// removeMultiples sorts the list and removes duplicate errors, namely those
+// that share a position, path, and message.
+//
+// Messages are rendered only to disambiguate errors that share a position and
+// path, and each such error is rendered exactly once; errors with a unique
+// position and path, the common case, are never rendered. This matters because
+// rendering fully formats the message and can be expensive.
 func (p *list) removeMultiples() {
-	p.sort()
-	*p = slices.CompactFunc(*p, approximateEqual)
-}
-
-func approximateEqual(a, b Error) bool {
-	aPos := a.Position()
-	bPos := b.Position()
-	if aPos == token.NoPos || bPos == token.NoPos {
-		return a.Error() == b.Error()
+	a := *p
+	if len(a) <= 1 {
+		return
 	}
-	return aPos.Compare(bPos) == 0 && slices.Compare(a.Path(), b.Path()) == 0
+	// Sort by position and path alone, with no rendering, so that any potential
+	// duplicates end up adjacent.
+	slices.SortFunc(a, func(x, y Error) int {
+		if c := comparePosWithNoPosFirst(x.Position(), y.Position()); c != 0 {
+			return c
+		}
+		return slices.Compare(x.Path(), y.Path())
+	})
+
+	// rendered pairs an error with its message so that a group can be ordered
+	// and deduplicated by message after rendering each member just once.
+	type rendered struct {
+		err Error
+		msg string
+	}
+	out := make(list, 0, len(a))
+	for i := 0; i < len(a); {
+		// Find the group sharing a position and path with a[i].
+		j := i + 1
+		for j < len(a) && a[i].Position() == a[j].Position() &&
+			slices.Equal(a[i].Path(), a[j].Path()) {
+			j++
+		}
+		if j-i == 1 {
+			// A lone error is kept without rendering it.
+			out = append(out, a[i])
+			i = j
+			continue
+		}
+		// Render each message once, then order and deduplicate by it.
+		group := make([]rendered, j-i)
+		for k, e := range a[i:j] {
+			group[k] = rendered{e, e.Error()}
+		}
+		slices.SortFunc(group, func(x, y rendered) int {
+			return cmp.Compare(x.msg, y.msg)
+		})
+		group = slices.CompactFunc(group, func(x, y rendered) bool {
+			return x.msg == y.msg
+		})
+		for _, r := range group {
+			out = append(out, r.err)
+		}
+		i = j
+	}
+	*p = out
 }
 
 // A list implements the error interface by returning the
@@ -440,6 +470,14 @@ func (p list) Error() string {
 	return fmt.Sprintf(format, args...)
 }
 
+// pathlessError wraps an Error to suppress its path, for use as a
+// format argument when the path is already provided by the caller.
+type pathlessError struct{ cueError }
+type cueError = Error // alias to avoid field name conflicting with Error() method
+
+func (e pathlessError) Path() []string { return nil }
+func (e pathlessError) Unwrap() error  { return Unwrap(e.cueError) }
+
 // Msg reports the unformatted error message for the first error, if any.
 func (p list) Msg() (format string, args []interface{}) {
 	switch len(p) {
@@ -448,7 +486,10 @@ func (p list) Msg() (format string, args []interface{}) {
 	case 1:
 		return p[0].Msg()
 	}
-	return "%s (and %d more errors)", []interface{}{p[0], len(p) - 1}
+	// Wrap p[0] to suppress its path. The list's own Path() already
+	// returns p[0].Path(), so including the path in the format arg
+	// would cause it to appear twice in the output.
+	return "%s (and %d more errors)", []interface{}{pathlessError{p[0]}, len(p) - 1}
 }
 
 // Position reports the primary position for the first error, if any.

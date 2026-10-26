@@ -6,6 +6,7 @@ package syntax
 import (
 	"fmt"
 	"io"
+	"iter"
 	"reflect"
 )
 
@@ -58,6 +59,7 @@ func Walk(node Node, f func(Node) bool) {
 		walkComments(node.CondLast, f)
 		walkList(node.Then, f)
 		walkComments(node.ThenLast, f)
+		walkComments(node.Last, f)
 		walkNilable(node.Else, f)
 	case *WhileClause:
 		walkList(node.Cond, f)
@@ -79,7 +81,8 @@ func Walk(node Node, f func(Node) bool) {
 		Walk(node.X, f)
 		Walk(node.Y, f)
 	case *FuncDecl:
-		Walk(node.Name, f)
+		walkNilable(node.Name, f)
+		walkList(node.Names, f)
 		Walk(node.Body, f)
 	case *Word:
 		walkList(node.Parts, f)
@@ -91,8 +94,14 @@ func Walk(node Node, f func(Node) bool) {
 		walkList(node.Stmts, f)
 		walkComments(node.Last, f)
 	case *ParamExp:
-		Walk(node.Param, f)
+		walkNilable(node.Flags, f)
+		walkNilable(node.Param, f)
+		walkNilable(node.NestedParam, f)
 		walkNilable(node.Index, f)
+		if node.Slice != nil {
+			walkNilable(node.Slice.Offset, f)
+			walkNilable(node.Slice.Length, f)
+		}
 		if node.Repl != nil {
 			walkNilable(node.Repl.Orig, f)
 			walkNilable(node.Repl.With, f)
@@ -116,6 +125,11 @@ func Walk(node Node, f func(Node) bool) {
 		Walk(node.X, f)
 	case *ParenArithm:
 		Walk(node.X, f)
+	case *FlagsArithm:
+		Walk(node.Flags, f)
+		if node.X != nil {
+			Walk(node.X, f)
+		}
 	case *ParenTest:
 		Walk(node.X, f)
 	case *CaseClause:
@@ -170,6 +184,24 @@ func Walk(node Node, f func(Node) bool) {
 	}
 
 	f(nil)
+}
+
+// Preorder returns an iterator over all the nodes of the syntax tree rooted at
+// node, in the same depth-first preorder as [Walk]; node must not be nil.
+//
+// For greater control over the traversal, such as pruning subtrees or being
+// called when exiting a node, use [Walk] directly.
+func Preorder(node Node) iter.Seq[Node] {
+	return func(yield func(Node) bool) {
+		ok := true
+		Walk(node, func(node Node) bool {
+			// yield must not be called again once it returns false.
+			if node != nil {
+				ok = ok && yield(node)
+			}
+			return ok
+		})
+	}
 }
 
 type nilableNode interface {
@@ -234,7 +266,7 @@ func (p *debugPrinter) print(x reflect.Value) {
 			return
 		}
 		p.print(x.Elem())
-	case reflect.Ptr:
+	case reflect.Pointer:
 		if x.IsNil() {
 			p.printf("nil")
 			return
@@ -258,7 +290,7 @@ func (p *debugPrinter) print(x reflect.Value) {
 		p.printf("}")
 
 	case reflect.Struct:
-		if v, ok := x.Interface().(Pos); ok {
+		if v, ok := reflect.TypeAssert[Pos](x); ok {
 			if v.IsRecovered() {
 				p.printf("<recovered>")
 				return
@@ -280,7 +312,7 @@ func (p *debugPrinter) print(x reflect.Value) {
 		}
 		p.printf("}")
 	default:
-		if s, ok := x.Interface().(fmt.Stringer); ok && !x.IsZero() {
+		if s, ok := reflect.TypeAssert[fmt.Stringer](x); ok && !x.IsZero() {
 			p.printf("%#v (%s)", x.Interface(), s)
 		} else {
 			p.printf("%#v", x.Interface())

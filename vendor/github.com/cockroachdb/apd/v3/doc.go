@@ -21,7 +21,7 @@ is refered to here as GDA. This is the same specification implemented by
 pythons decimal module (https://docs.python.org/2/library/decimal.html)
 and GCCs decimal extension.
 
-Features
+# Features
 
 Panic-free operation. The math/big types don’t return errors, and instead
 panic under some conditions that are documented. This requires users to
@@ -51,7 +51,7 @@ if needed.
 SQL scan and value methods are implemented. This allows the use of Decimals as
 placeholder parameters and row result Scan destinations.
 
-Usage
+# Usage
 
 apd has two main types. The first is Decimal which holds the values of
 decimals. It is simple and uses a big.Int with an exponent to describe
@@ -69,6 +69,5 @@ bitfield of flags that occurred during an operation. These include overflow,
 underflow, inexact, rounded, and others. The Traps field of a Context can be
 set which will produce an error if the corresponding flag occurs. An example
 of this is given below.
-
 */
 package apd

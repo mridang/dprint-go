@@ -25,14 +25,14 @@ type loop struct {
 const digitsToBitsRatio = math.Ln10 / math.Ln2
 
 // newLoop returns a new loop checker. Arguments:
-//   - name: name of the function being calculated (for error messages)
-//   - arg: argument to the function (for error messages)
-//   - precision: desired precision; the loop ends when consecutive estimates
-//     differ less than the desired precision. Note that typically
-//     the inner computations in an iteration need higher precision,
-//     so this is normally lower than the precision in the context.
-//   - maxItersPerDigit: after this many iterations per digit of precision, the
-//     loop ends in error.
+// 	 - name: name of the function being calculated (for error messages)
+// 	 - arg: argument to the function (for error messages)
+// 	 - precision: desired precision; the loop ends when consecutive estimates
+// 	              differ less than the desired precision. Note that typically
+// 	              the inner computations in an iteration need higher precision,
+// 	              so this is normally lower than the precision in the context.
+// 	 - maxItersPerDigit: after this many iterations per digit of precision, the
+// 	                     loop ends in error.
 func (c *Context) newLoop(name string, arg *Decimal, precision uint32, maxItersPerDigit int) *loop {
 	return &loop{
 		c:             c,

@@ -95,7 +95,7 @@ func NumDigits(b *BigInt) int64 {
 	var a *BigInt
 	if b.Sign() < 0 {
 		var tmpA BigInt
-		a := &tmpA
+		a = &tmpA
 		a.Abs(b)
 	} else {
 		a = b

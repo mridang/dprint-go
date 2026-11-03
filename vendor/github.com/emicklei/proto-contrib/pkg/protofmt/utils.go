@@ -72,12 +72,8 @@ func (f *Formatter) printComment(c *proto.Comment) {
 // if the Visitee has comment then print it.
 func (f *Formatter) begin(stmt string, v proto.Visitee) {
 	// if not the first statement and different from last and on same indent level.
-	// if len(f.lastStmt) > 0 && f.lastLevel == f.indentLevel {
-	// 	f.nl()
-	// }
-	// if not the first statement and different from last and on same indent level.
 	if len(f.lastStmt) > 0 && f.lastStmt != stmt && f.lastLevel == f.indentLevel {
-		f.nl()
+		//f.nl()
 	}
 	f.lastStmt = stmt
 	f.printDoc(v)
@@ -121,13 +117,22 @@ func (f *Formatter) printListOfColumns(list []columnsPrintable) {
 	}
 	// now print all values
 	for _, each := range values {
-		f.indent(0)
-		for c := 0; c < len(widths); c++ {
-			pw := widths[c]
-			// only print if there is a value
-			if c < len(each) {
-				// using space padding to match the max width
-				io.WriteString(f.w, each[c].formatted(f.indentSeparator, f.indentLevel, pw))
+		hasValue := false
+		for a := 0; a < len(each); a++ {
+			if each[a].source != "" {
+				hasValue = true
+				break
+			}
+		}
+		if hasValue {
+			f.indent(0)
+			for c := 0; c < len(widths); c++ {
+				// only print if there is a value
+				if c < len(each) {
+					pw := widths[c]
+					// using space padding to match the max width
+					io.WriteString(f.w, each[c].formatted(f.indentSeparator, f.indentLevel, pw))
+				}
 			}
 		}
 		f.nl()
@@ -202,5 +207,5 @@ func (f *Formatter) endWithComment(commentOrNil *proto.Comment) {
 		}
 		io.WriteString(f.w, commentOrNil.Message())
 	}
-	io.WriteString(f.w, "\n")
+	f.nl()
 }

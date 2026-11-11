@@ -3,7 +3,7 @@ name: Format Code (Gofmt)
 on: push
 
 permissions:
-  contents: write
+  contents: read
 
 defaults:
   run:
@@ -30,15 +30,10 @@ jobs:
         with:
           tinygo-version: '0.39.0'
 
-      - name: Run Gofmt
-        run: make format
-
-      - name: Commit and Push Changes
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: Apply formatting
-          commit_options: '--no-verify'
-          repository: .
-          commit_user_name: github-actions[bot]
-          commit_user_email: github-actions[bot]@users.noreply.github.com
-          commit_author: GitHub Actions <actions@github.com>
+      - name: Check Gofmt
+        run: |
+          unformatted=$(gofmt -s -l .; go run golang.org/x/tools/cmd/goimports@latest -l .)
+          if [ -n "$unformatted" ]; then
+            echo "$unformatted"
+            exit 1
+          fi

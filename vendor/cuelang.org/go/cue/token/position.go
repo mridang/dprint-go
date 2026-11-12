@@ -17,6 +17,7 @@ package token
 import (
 	"cmp"
 	"fmt"
+	"path/filepath"
 	"sort"
 	"sync"
 
@@ -27,9 +28,9 @@ import (
 // -----------------------------------------------------------------------------
 // Positions
 
-// Position describes an arbitrary and printable source position within a file,
-// including offset, line, and column location,
-// which can be rendered in a human-friendly text form.
+// Position describes an arbitrary and absolute (printable) source
+// position within a file, including offset, line, and column
+// location, which can be rendered in a human-friendly text form.
 //
 // A Position is valid if the line number is > 0.
 type Position struct {
@@ -65,7 +66,7 @@ func (pos Position) String() string {
 
 // Pos is a compact encoding of a source position.
 // When valid, as reported by [Pos.IsValid], this can be either
-// a printable file position to obtain via [Pos.Position],
+// an absolute file position to obtain via [Pos.Position],
 // which can be rendered in a human-friendly text form,
 // and/or a relative position to obtain via [Pos.RelPos].
 type Pos struct {
@@ -73,12 +74,10 @@ type Pos struct {
 	offset int
 }
 
-// File returns the file that contains the printable position p
+// File returns the file that contains the absolute position p
 // or nil if there is no such file (for instance for p == [NoPos]).
 func (p Pos) File() *File {
-	if p.index() == 0 {
-		return nil
-	}
+	// assumed: p.index() != 0 iff p.file != nil
 	return p.file
 }
 
@@ -87,7 +86,7 @@ func (p Pos) File() *File {
 type hiddenPos = Pos
 
 func (p hiddenPos) Experiment() (x cueexperiment.File) {
-	if p.file == nil || p.file.experiments == nil {
+	if !p.HasAbsPos() || p.file.experiments == nil {
 		return x
 	}
 
@@ -117,7 +116,7 @@ func (p Pos) Column() int {
 // Filename returns the name of the file that this position belongs to.
 func (p Pos) Filename() string {
 	// Avoid calling [Pos.Position] as it also unpacks line and column info.
-	if p.file == nil {
+	if !p.HasAbsPos() {
 		return ""
 	}
 	return p.file.name
@@ -125,13 +124,13 @@ func (p Pos) Filename() string {
 
 // Position unpacks the position information into a flat struct.
 func (p Pos) Position() Position {
-	if p.file == nil {
+	if !p.HasAbsPos() {
 		return Position{}
 	}
 	return p.file.Position(p)
 }
 
-// String returns a human-readable form of a printable position.
+// String returns a human-readable form of an absolute position.
 func (p Pos) String() string {
 	return p.Position().String()
 }
@@ -141,14 +140,24 @@ func (p Pos) String() string {
 func (p Pos) Compare(p2 Pos) int {
 	if p == p2 {
 		return 0
-	} else if p == NoPos {
+	} else if !p.IsValid() {
 		return +1
-	} else if p2 == NoPos {
+	} else if !p2.IsValid() {
 		return -1
 	}
 	// Avoid calling [Pos.Position] as it also unpacks line and column info;
 	// comparing positions only needs filenames and offsets.
-	if c := cmp.Compare(p.Filename(), p2.Filename()); c != 0 {
+	//
+	// Note that absolute paths always go first; this naturally happens on Unix-like
+	// systems given that a leading slash sorts before almost any filename character.
+	// On Windows, volume names like C: could sort after filenames like Bar,
+	// which can cause inconsistent ordering depending on the current directory.
+	f1, f2 := p.Filename(), p2.Filename()
+	if c := cmpBool(filepath.IsAbs(f1), filepath.IsAbs(f2)); c != 0 {
+		// Note that this is negated so that absolute paths (IsAbs==true) go first.
+		return -c
+	}
+	if c := cmp.Compare(f1, f2); c != 0 {
 		return c
 	}
 	// Note that CUE doesn't currently use any directives which alter
@@ -190,16 +199,39 @@ const (
 	NewSection // section
 
 	relMask  = 0xf
-	relShift = 4
+	relShift = 6
+
+	// commaBit is set in the position offset when the token was preceded
+	// by an explicit comma in the source. This allows the formatter to
+	// distinguish between explicit commas and auto-inserted (newline)
+	// commas without needing extra AST fields.
+	commaBit = 0x10
+
+	// scannedBit marks a token as having been produced by the CUE scanner
+	// (as opposed to being part of a programmatically constructed AST).
+	// This allows the formatter to distinguish scanned lists from
+	// programmatic ones when deciding comma style.
+	scannedBit = 0x20
 )
 
 func (p RelPos) Pos() Pos {
 	return Pos{nil, int(p)}
 }
 
-// HasRelPos reports whether p has a relative position.
+// HasRelPos reports whether p has a relative position, which can be
+// obtained via [Pos.RelPos].
 func (p Pos) HasRelPos() bool {
 	return p.offset&relMask != 0
+}
+
+// HasAbsPos reports whether p has an absolute position, which can be
+// obtained via [Pos.Position].
+func (p Pos) HasAbsPos() bool {
+	// It's assumed that p.file == nil iff p.index() == 0
+	//
+	// I.e. a file without an index is pointless (just a filename), and
+	// an index without a file is an offset in a vacuum.
+	return p.file != nil
 }
 
 // Before reports whether p < q, as documented in [Pos.Compare].
@@ -214,7 +246,7 @@ func (p Pos) Before(q Pos) bool {
 // Offset reports the byte offset relative to the file.
 func (p Pos) Offset() int {
 	// Avoid calling [Pos.Position] as it also unpacks line and column info.
-	if p.file == nil {
+	if !p.HasAbsPos() {
 		return 0
 	}
 	return p.file.Offset(p)
@@ -222,12 +254,16 @@ func (p Pos) Offset() int {
 
 // Add creates a new position relative to the p offset by n.
 func (p Pos) Add(n int) Pos {
+	// If p is not an absolute position, we can't add to its offset.
+	if !p.HasAbsPos() {
+		return p
+	}
 	return Pos{p.file, p.offset + toPos(index(n))}
 }
 
 // IsValid reports whether the position contains any useful information,
-// meaning either a printable file position to obtain via [Pos.Position],
-// and/or a relative position to obtain via [Pos.RelPos].
+// meaning either an absolute file position (obtained via [Pos.Position]),
+// and/or a relative position (obtained via [Pos.RelPos]).
 func (p Pos) IsValid() bool {
 	return p != NoPos
 }
@@ -246,12 +282,49 @@ func (p Pos) RelPos() RelPos {
 	return RelPos(p.offset & relMask)
 }
 
+// HasComma reports whether this token was preceded by an explicit comma
+// in the source text. This is set by the scanner and used by the formatter
+// to preserve comma style in lists.
+func (p Pos) HasComma() bool {
+	return p.offset&commaBit != 0
+}
+
+// WithComma returns a position with the comma bit set or cleared.
+func (p Pos) WithComma(hasComma bool) Pos {
+	if hasComma {
+		return Pos{p.file, p.offset | commaBit}
+	}
+	return Pos{p.file, p.offset &^ commaBit}
+}
+
+// Scanned reports whether this token was produced by the CUE scanner.
+// Programmatically constructed AST nodes will not have this bit set.
+func (p Pos) Scanned() bool {
+	return p.offset&scannedBit != 0
+}
+
+// WithScanned returns a position with the scanned bit set or cleared.
+func (p Pos) WithScanned(scanned bool) Pos {
+	if scanned {
+		return Pos{p.file, p.offset | scannedBit}
+	}
+	return Pos{p.file, p.offset &^ scannedBit}
+}
+
 func (p Pos) index() index {
 	return index(p.offset) >> relShift
 }
 
 func toPos(x index) int {
 	return (int(x) << relShift)
+}
+
+// WithinInclusive reports whether offset lies within the range start
+// to end, inclusive on both ends. It is up to the caller to ensure
+// that start and end are from the same file, and start is before end,
+// and that offset is appropriate for the file.
+func WithinInclusive(offset int, start, end Pos) bool {
+	return start.Offset() <= offset && offset <= end.Offset()
 }
 
 // -----------------------------------------------------------------------------
@@ -281,6 +354,7 @@ type File struct {
 	experiments *cueexperiment.File
 	priority    layer.Priority
 	isData      bool
+	fsLoc       FSLoc
 }
 
 // NewFile returns a new file with the given OS file name. The size provides the
@@ -331,9 +405,19 @@ func (f *hiddenFile) SetLayer(priority int8, isData bool) {
 	f.isData = isData
 }
 
+// NOTE: this is an internal API and may change at any time without notice.
+func (f *hiddenFile) SetFSLoc(loc FSLoc) {
+	f.fsLoc = loc
+}
+
 // Name returns the file name of file f as registered with AddFile.
 func (f *File) Name() string {
 	return f.name
+}
+
+// FSLoc returns the FS location information for file f.
+func (f *File) FSLoc() FSLoc {
+	return f.fsLoc
 }
 
 // Base returns the base offset of file f as passed to NewFile.
@@ -582,7 +666,7 @@ func (f *File) position(p Pos, adjusted bool) (pos Position) {
 // //line comments; otherwise those comments are ignored.
 // p must be a Pos value in f or NoPos.
 func (f *File) PositionFor(p Pos, adjusted bool) (pos Position) {
-	if p != NoPos {
+	if p.IsValid() {
 		pos = f.position(p, adjusted)
 	}
 	return
@@ -619,4 +703,15 @@ func searchInts(a []index, x index) int {
 		}
 	}
 	return i - 1
+}
+
+func cmpBool(x, y bool) int {
+	switch {
+	case !x && y:
+		return -1
+	case x && !y:
+		return +1
+	default:
+		return 0
+	}
 }

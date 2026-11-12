@@ -27,6 +27,7 @@ import (
 	"cuelang.org/go/cue/token"
 	"cuelang.org/go/internal"
 	"cuelang.org/go/internal/cueexperiment"
+	"cuelang.org/go/internal/mod/semver"
 )
 
 // The parser structure holds the parser's internal state.
@@ -73,7 +74,9 @@ type parser struct {
 	// Non-syntactic parser control
 	exprLev int // < 0: in control clause, >= 0: in expression
 
-	imports []*ast.ImportSpec // list of imports
+	// nestLevel tracks and limits the expression nesting depth during
+	// parsing. See [maxNestLevel].
+	nestLevel int
 }
 
 func (p *parser) init(filename string, src []byte, opts []Option) {
@@ -94,6 +97,16 @@ func (p *parser) init(filename string, src []byte, opts []Option) {
 	p.comments = &commentState{pos: -1}
 
 	p.next()
+}
+
+// versionAtLeast reports whether the file's language version is at least v.
+// An absent version (empty string) is treated as the latest version.
+func (p *parser) versionAtLeast(v string) bool {
+	fv := ""
+	if p.experiments != nil {
+		fv = p.experiments.LanguageVersion()
+	}
+	return fv == "" || semver.Compare(fv, v) >= 0
 }
 
 type commentState struct {
@@ -275,6 +288,28 @@ func un(p *parser) {
 	p.printTrace(")")
 }
 
+// maxNestLevel is the deepest expression nesting the parser accepts. Input
+// nested more deeply is rejected rather than recursed into any further.
+const maxNestLevel = 10_000
+
+// incNestLevel increments the parser's nesting depth, bailing out with an
+// error once it grows past [maxNestLevel]. It pairs with [decNestLevel] in the
+// same way as [trace] and [un]: defer decNestLevel(incNestLevel(p)).
+func incNestLevel(p *parser) *parser {
+	p.nestLevel++
+	if p.nestLevel > maxNestLevel {
+		p.panicking = true
+		p.errf(p.pos, "expression exceeds maximum nesting depth of %d", maxNestLevel)
+		panic("expression too deeply nested")
+	}
+	return p
+}
+
+// decNestLevel decrements the parser's nesting depth. See [incNestLevel].
+func decNestLevel(p *parser) {
+	p.nestLevel--
+}
+
 // Advance to the next
 func (p *parser) next0() {
 	// Because of one-token look-ahead, print the previous token
@@ -415,16 +450,6 @@ func (p *parser) next() {
 	}
 }
 
-// errDeprecated causes an error due to the use of a deprecated language feature.
-// Note that this is how language features used to get phased out;
-// we now use CUE experiments driven by a module's language version,
-// the CUE_EXPERIMENT environment variable, and the @experiment file attribute.
-// TODO(mvdan): transition out of this entirely.
-func (p *parser) errDeprecated(pos token.Pos, version, name string) {
-	p.errors = errors.Append(p.errors, errors.Wrapf(&DeprecationError{}, pos,
-		"use of deprecated %s (deprecated as of %s)", name, version))
-}
-
 func (p *parser) errf(pos token.Pos, msg string, args ...interface{}) {
 	// ePos := p.file.Position(pos)
 	ePos := pos
@@ -470,6 +495,7 @@ func (p *parser) expect(tok token.Token) token.Pos {
 	pos := p.pos
 	if p.tok != tok {
 		p.errorExpected(pos, "'"+tok.String()+"'")
+		pos = token.NoPos
 	}
 	p.next() // make progress
 	return pos
@@ -486,15 +512,14 @@ func (p *parser) expectClosing(tok token.Token, context string) token.Pos {
 }
 
 func (p *parser) expectComma() {
-	// semicolon is optional before a closing ')', ']', '}', or newline
-	if p.tok != token.RPAREN && p.tok != token.RBRACE && p.tok != token.EOF {
-		switch p.tok {
-		case token.COMMA:
-			p.next()
-		default:
-			p.errorExpected(p.pos, "','")
-			syncExpr(p)
-		}
+	switch p.tok {
+	case token.COMMA:
+		p.next()
+	// the comma is optional before a closing ')', ']', '}', or newline
+	case token.RPAREN, token.RBRACE, token.EOF:
+	default:
+		p.errorExpected(p.pos, "','")
+		syncExpr(p)
 	}
 }
 
@@ -572,13 +597,10 @@ func (p *parser) safePos(pos token.Pos) (res token.Pos) {
 
 func (p *parser) parseIdent() *ast.Ident {
 	c := p.openComments()
-	pos := p.pos
-	name := "_"
-	if p.tok == token.IDENT {
-		name = p.lit
-		p.next()
-	} else {
-		p.expect(token.IDENT) // use expect() error handling
+	name := p.lit
+	pos := p.expect(token.IDENT)
+	if !pos.IsValid() {
+		name = "_"
 	}
 	ident := &ast.Ident{NamePos: pos, Name: name}
 	c.closeNode(p, ident)
@@ -623,7 +645,17 @@ func (p *parser) parseOperand() (expr ast.Expr) {
 
 	switch p.tok {
 	case token.IDENT:
-		return p.parseIdent()
+		ident := p.parseIdent()
+		// Check for optional reference marker (?)
+		// Don't consume ? if it's followed by : (that's a field constraint, not optional reference)
+		if p.tok == token.OPTION {
+			// Peek ahead to see if this is a field constraint (foo?: value)
+			p.peek()
+			if p.peekToken.tok != token.COLON {
+				return p.wrapOptional(ident, p.tok)
+			}
+		}
+		return ident
 
 	case token.LBRACE:
 		return p.parseStruct()
@@ -667,7 +699,8 @@ func (p *parser) parseOperand() (expr ast.Expr) {
 		return &ast.ParenExpr{
 			Lparen: lparen,
 			X:      x,
-			Rparen: rparen}
+			Rparen: rparen,
+		}
 
 	default:
 		if p.tok.IsKeyword() {
@@ -710,6 +743,9 @@ func (p *parser) parseIndexOrSlice(x ast.Expr) (expr ast.Expr) {
 			index[nColons] = p.parseRHS()
 		}
 	}
+	if nColons == 0 && p.tok == token.COMMA {
+		p.next()
+	}
 	p.exprLev--
 	rbrack := p.expect(token.RBRACK)
 
@@ -719,14 +755,26 @@ func (p *parser) parseIndexOrSlice(x ast.Expr) (expr ast.Expr) {
 			Lbrack: lbrack,
 			Low:    index[0],
 			High:   index[1],
-			Rbrack: rbrack}
+			Rbrack: rbrack,
+		}
 	}
 
-	return &ast.IndexExpr{
+	result := &ast.IndexExpr{
 		X:      x,
 		Lbrack: lbrack,
 		Index:  index[0],
-		Rbrack: rbrack}
+		Rbrack: rbrack,
+	}
+	return p.wrapOptional(result, p.tok)
+}
+
+func (p *parser) wrapOptional(x ast.Expr, tok token.Token) ast.Expr {
+	if tok == token.OPTION {
+		pos := p.pos
+		p.next()
+		return &ast.PostfixExpr{X: x, Op: token.OPTION, OpPos: pos}
+	}
+	return x
 }
 
 func (p *parser) parseCallOrConversion(fun ast.Expr) (expr *ast.CallExpr) {
@@ -757,7 +805,8 @@ func (p *parser) parseCallOrConversion(fun ast.Expr) (expr *ast.CallExpr) {
 		Fun:    fun,
 		Lparen: lparen,
 		Args:   list,
-		Rparen: rparen}
+		Rparen: rparen,
+	}
 }
 
 // TODO: inline this function in parseFieldList once we no longer user comment
@@ -841,7 +890,7 @@ func (p *parser) parseComprehension() (decl ast.Decl, ident *ast.Ident) {
 
 	tok := p.tok
 	pos := p.pos
-	clauses, fc := p.parseComprehensionClauses(true)
+	clauses, fc := p.parseComprehensionClauses()
 	if fc != nil {
 		ident = &ast.Ident{
 			NamePos: pos,
@@ -855,13 +904,19 @@ func (p *parser) parseComprehension() (decl ast.Decl, ident *ast.Ident) {
 	expr := p.parseStruct()
 	sc.closeExpr(p, expr)
 
+	var fallbackClause *ast.FallbackClause
+	if p.tok == token.ELSE || p.tok == token.FALLBACK || p.tok == token.OTHERWISE {
+		fallbackClause = p.parseFallbackClause(clauses)
+	}
+
 	if p.atComma("struct literal", token.RBRACE) { // TODO: may be EOF
 		p.next()
 	}
 
 	return &ast.Comprehension{
-		Clauses: clauses,
-		Value:   expr,
+		Clauses:  clauses,
+		Value:    expr,
+		Fallback: fallbackClause,
 	}, nil
 }
 
@@ -874,38 +929,36 @@ func (p *parser) parseField() (decl ast.Decl) {
 	defer func() { c.closeNode(p, decl) }()
 
 	pos := p.pos
-
-	this := &ast.Field{Label: nil}
-	m := this
-
 	tok := p.tok
 
 	label, expr, decl, ok := p.parseLabel(false)
 	if decl != nil {
 		return decl
 	}
-	m.Label = label
 
 	if !ok {
 		if expr == nil {
 			expr = p.parseRHS()
 		}
-		if a, ok := expr.(*ast.Alias); ok {
-			p.errDeprecated(a.Pos(), "v0.1.4", `old-style alias; use "let X = expr" instead`)
+		if _, isAlias := expr.(*ast.Alias); isAlias {
+			p.errorExpected(p.pos, "label or ':'")
 			p.consumeDeclComma()
-			return a
+			return &ast.BadDecl{From: pos, To: p.pos}
 		}
 		e := &ast.EmbedDecl{Expr: expr}
 		p.consumeDeclComma()
 		return e
 	}
 
+	this := &ast.Field{}
+	m := this
+	m.Label = label
+
 	// Parse postfix alias if present
 	m.Alias = p.parsePostfixAlias()
 
 	switch p.tok {
 	case token.OPTION, token.NOT:
-		m.Optional = p.pos
 		m.Constraint = p.tok
 		p.next()
 	}
@@ -927,16 +980,15 @@ func (p *parser) parseField() (decl ast.Decl) {
 		fallthrough
 
 	case token.RBRACE, token.EOF:
-		if a, ok := expr.(*ast.Alias); ok {
-			p.errDeprecated(a.Pos(), "v0.1.4", `old-style alias; use "let X = expr" instead`)
-			return a
-		}
-		switch tok {
-		case token.IDENT, token.LBRACK, token.LPAREN,
-			token.STRING, token.INTERPOLATION,
-			token.NULL, token.TRUE, token.FALSE,
-			token.FOR, token.IF, token.LET, token.IN:
-			return &ast.EmbedDecl{Expr: expr}
+		if _, isAlias := expr.(*ast.Alias); !isAlias {
+			switch tok {
+			case token.IDENT, token.LBRACK, token.LPAREN,
+				token.STRING, token.INTERPOLATION,
+				token.NULL, token.TRUE, token.FALSE,
+				token.FOR, token.IF, token.LET, token.IN,
+				token.TRY, token.ELSE, token.FALLBACK, token.OTHERWISE:
+				return &ast.EmbedDecl{Expr: expr}
+			}
 		}
 		fallthrough
 
@@ -946,11 +998,7 @@ func (p *parser) parseField() (decl ast.Decl) {
 	}
 
 	m.TokenPos = p.pos
-	m.Token = p.tok
-	if p.tok != token.COLON {
-		p.errorExpected(pos, "':'")
-	}
-	p.next() // :
+	p.expect(token.COLON)
 
 	for {
 		if l, ok := m.Label.(*ast.ListLit); ok && len(l.Elts) != 1 {
@@ -974,22 +1022,12 @@ func (p *parser) parseField() (decl ast.Decl) {
 
 		switch p.tok {
 		case token.OPTION, token.NOT:
-			m.Optional = p.pos
 			m.Constraint = p.tok
 			p.next()
 		}
 
 		m.TokenPos = p.pos
-		m.Token = p.tok
-		if p.tok != token.COLON {
-			if p.tok.IsLiteral() {
-				p.errf(p.pos, "expected ':'; found %s", p.lit)
-			} else {
-				p.errf(p.pos, "expected ':'; found %s", p.tok)
-			}
-			break
-		}
-		p.next()
+		p.expect(token.COLON)
 	}
 
 	if attrs := p.parseAttributes(); attrs != nil {
@@ -1029,7 +1067,7 @@ func (p *parser) parseLabel(rhs bool) (label ast.Label, expr ast.Expr, decl ast.
 	tok := p.tok
 	switch tok {
 
-	case token.FOR, token.IF:
+	case token.FOR, token.IF, token.TRY:
 		if rhs {
 			expr = p.parseExpr()
 			break
@@ -1039,6 +1077,10 @@ func (p *parser) parseLabel(rhs bool) (label ast.Label, expr ast.Expr, decl ast.
 			return nil, nil, comp, false
 		}
 		expr = ident
+
+	case token.ELSE, token.FALLBACK, token.OTHERWISE:
+		// These keywords can be used as field labels
+		expr = p.parseExpr()
 
 	case token.LET:
 		let, ident := p.parseLetDecl()
@@ -1131,14 +1173,13 @@ func (p *parser) parseStructBody() []ast.Decl {
 	return elts
 }
 
-// parseComprehensionClauses parses either new-style (first==true)
-// or old-style (first==false).
+// parseComprehensionClauses parses comprehension clauses.
 // Should we now disallow keywords as identifiers? If not, we need to
 // return a list of discovered labels as the alternative.
-func (p *parser) parseComprehensionClauses(first bool) (clauses []ast.Clause, c *commentState) {
+func (p *parser) parseComprehensionClauses() (clauses []ast.Clause, c *commentState) {
 	// TODO: reuse Template spec, which is possible if it doesn't check the
 	// first is an identifier.
-
+	first := true
 	for {
 		switch p.tok {
 		case token.FOR:
@@ -1207,15 +1248,84 @@ func (p *parser) parseComprehensionClauses(first bool) (clauses []ast.Clause, c 
 				Expr:  expr,
 			}))
 
+		case token.TRY:
+			c := p.openComments()
+
+			tc := &ast.TryClause{Try: p.expect(token.TRY)}
+
+			// Check for assignment form: try x = expr
+			if p.tok == token.IDENT {
+				tc.Ident = p.parseIdent()
+				tc.Equal = p.expect(token.BIND)
+				tc.Expr = p.parseRHS()
+			}
+
+			clauses = append(clauses, c.closeClause(p, tc))
+
 		default:
 			return clauses, nil
 		}
 		if p.tok == token.COMMA {
 			p.next()
 		}
-
 		first = false
 	}
+}
+
+// parseFallbackClause parses an else or fallback clause in a comprehension.
+// It determines the appropriate keyword based on the clause composition:
+// - Single if or try clause: expects ELSE, errors on FALLBACK
+// - Everything else: expects FALLBACK, errors on ELSE
+func (p *parser) parseFallbackClause(clauses []ast.Clause) *ast.FallbackClause {
+	if p.trace {
+		defer un(trace(p, "FallbackClause"))
+	}
+	c := p.openComments()
+
+	if p.experiments == nil || !p.experiments.Try {
+		p.errf(p.pos, "%s requires @experiment(try)", p.tok)
+	}
+
+	// Determine if this is a single if or try clause
+	isSingleGuard := len(clauses) == 1
+	if isSingleGuard {
+		switch clauses[0].(type) {
+		case *ast.IfClause, *ast.TryClause:
+			// Single if or try: use else
+		default:
+			isSingleGuard = false
+		}
+	}
+
+	var pos token.Pos
+	if isSingleGuard {
+		// Single if/try clause: must use else
+		if p.tok == token.FALLBACK || p.tok == token.OTHERWISE {
+			p.errf(p.pos, "use 'else' with single 'if' or 'try' clause")
+			pos = p.pos
+			p.next()
+		} else {
+			pos = p.expect(token.ELSE)
+		}
+	} else {
+		// Everything else: must use otherwise (or legacy fallback)
+		if p.tok == token.ELSE {
+			p.errf(p.pos, "use 'otherwise' for comprehensions with multiple clauses or 'for' clauses")
+			pos = p.pos
+			p.next()
+		} else {
+			// Accept both 'otherwise' (primary) and 'fallback' (legacy alias)
+			// TODO: once support for fallback token is removed, use
+			// p.expect(token.OTHERWISE) here instead.
+			pos = p.pos
+			p.next()
+		}
+	}
+	body := p.parseStruct()
+	return c.closeClause(p, &ast.FallbackClause{
+		Fallback: pos,
+		Body:     body.(*ast.StructLit),
+	}).(*ast.FallbackClause)
 }
 
 func (p *parser) parseFunc() (expr ast.Expr) {
@@ -1260,9 +1370,7 @@ func (p *parser) parseFuncArgs() (list []ast.Expr) {
 
 	for p.tok != token.RPAREN && p.tok != token.EOF {
 		list = append(list, p.parseFuncArg())
-		if p.tok != token.RPAREN {
-			p.expectComma()
-		}
+		p.expectComma() // skip over a trailing comma or newline
 	}
 
 	return list
@@ -1302,7 +1410,8 @@ func (p *parser) parseList() (expr ast.Expr) {
 	return &ast.ListLit{
 		Lbrack: lbrack,
 		Elts:   elts,
-		Rbrack: rbrack}
+		Rbrack: rbrack,
+	}
 }
 
 func (p *parser) parseListElements() (list []ast.Expr) {
@@ -1331,22 +1440,28 @@ func (p *parser) parseListElement() (expr ast.Expr, ok bool) {
 	defer func() { c.closeNode(p, expr) }()
 
 	switch p.tok {
-	case token.FOR, token.IF:
+	case token.FOR, token.IF, token.TRY:
 		tok := p.tok
 		pos := p.pos
-		clauses, fc := p.parseComprehensionClauses(true)
+		clauses, fc := p.parseComprehensionClauses()
 		if clauses != nil {
 			sc := p.openComments()
 			expr := p.parseStruct()
 			sc.closeExpr(p, expr)
+
+			var fallbackClause *ast.FallbackClause
+			if p.tok == token.ELSE || p.tok == token.FALLBACK || p.tok == token.OTHERWISE {
+				fallbackClause = p.parseFallbackClause(clauses)
+			}
 
 			if p.atComma("list literal", token.RBRACK) { // TODO: may be EOF
 				p.next()
 			}
 
 			return &ast.Comprehension{
-				Clauses: clauses,
-				Value:   expr,
+				Clauses:  clauses,
+				Value:    expr,
+				Fallback: fallbackClause,
 			}, true
 		}
 
@@ -1363,20 +1478,22 @@ func (p *parser) parseListElement() (expr ast.Expr, ok bool) {
 	expr = p.parseBinaryExprTail(token.LowestPrec+1, expr)
 	expr = p.parseAlias(expr)
 
-	// Enforce there is an explicit comma. We could also allow the
-	// omission of commas in lists, but this gives rise to some ambiguities
-	// with list comprehensions.
-	if p.tok == token.COMMA && p.lit != "," {
+	// Before v0.17.0 the parser required explicit commas between list
+	// elements; automatic (newline-inserted) commas were not accepted.
+	if !p.versionAtLeast("v0.17.0") && p.tok == token.COMMA && p.lit != "," {
 		p.next()
-		// Allow missing comma for last element, though, to be compliant
-		// with JSON.
+		// Allow missing comma for last element to be compliant with JSON.
 		if p.tok == token.RBRACK || p.tok == token.FOR || p.tok == token.IF {
 			return expr, false
 		}
 		p.errf(p.pos, "missing ',' before newline in list literal")
-	} else if !p.atComma("list literal", token.RBRACK, token.FOR, token.IF) {
+		goto exit
+	}
+
+	if !p.atComma("list literal", token.RBRACK, token.FOR, token.IF) {
 		return expr, false
 	}
+exit:
 	p.next()
 
 	return expr, true
@@ -1407,7 +1524,7 @@ func (p *parser) parseAlias(lhs ast.Expr) (expr ast.Expr) {
 		p.checkDeclIdent(x)
 		return &ast.Alias{Ident: x, Equal: pos, Expr: expr}
 	}
-	p.errf(p.pos, "expected identifier for alias")
+	p.errorExpected(p.pos, "identifier for alias")
 	return expr
 }
 
@@ -1429,7 +1546,7 @@ func (p *parser) parsePostfixAlias() *ast.PostfixAlias {
 
 	switch p.tok {
 	case token.LPAREN:
-		// Dual form: ~(K,V)
+		// Parenthesized form: ~(X) or ~(K,V)
 		lparen := p.pos
 		p.next()
 
@@ -1439,16 +1556,26 @@ func (p *parser) parsePostfixAlias() *ast.PostfixAlias {
 		}
 		k := p.parseIdent()
 
-		comma := p.pos
-		if p.tok != token.COMMA {
-			p.errorExpected(p.pos, "','")
+		if p.tok == token.RPAREN {
+			// Single form with parens: ~(X)
+			rparen := p.pos
+			p.next()
+			return &ast.PostfixAlias{
+				Tilde:  pos,
+				Lparen: lparen,
+				Field:  k,
+				Rparen: rparen,
+			}
+		}
+
+		comma := p.expect(token.COMMA)
+		if !comma.IsValid() {
 			// Recovery: treat as simple form with just K
 			return &ast.PostfixAlias{
 				Tilde: pos,
 				Field: k,
 			}
 		}
-		p.next()
 
 		if p.tok != token.IDENT {
 			p.errorExpected(p.pos, "identifier for field alias")
@@ -1463,12 +1590,7 @@ func (p *parser) parsePostfixAlias() *ast.PostfixAlias {
 		}
 		v := p.parseIdent()
 
-		rparen := p.pos
-		if p.tok != token.RPAREN {
-			p.errorExpected(p.pos, "')'")
-		} else {
-			p.next()
-		}
+		rparen := p.expect(token.RPAREN)
 
 		return &ast.PostfixAlias{
 			Tilde:  pos,
@@ -1546,15 +1668,18 @@ L:
 	for {
 		switch p.tok {
 		case token.PERIOD:
+			period := p.pos
 			c := p.openComments()
 			c.pos = 1
 			p.next()
 			switch p.tok {
 			case token.IDENT:
 				x = &ast.SelectorExpr{
-					X:   p.checkExpr(x),
-					Sel: p.parseIdent(),
+					X:      p.checkExpr(x),
+					Period: period,
+					Sel:    p.parseIdent(),
 				}
+				x = p.wrapOptional(x, p.tok)
 			case token.STRING:
 				if strings.HasPrefix(p.lit, `"`) && !strings.HasPrefix(p.lit, `""`) {
 					str := &ast.BasicLit{
@@ -1564,25 +1689,33 @@ L:
 					}
 					p.next()
 					x = &ast.SelectorExpr{
-						X:   p.checkExpr(x),
-						Sel: str,
+						X:      p.checkExpr(x),
+						Period: period,
+						Sel:    str,
 					}
+					x = p.wrapOptional(x, p.tok)
 					break
 				}
 				fallthrough
 			default:
 				if p.tok.IsKeyword() {
 					x = &ast.SelectorExpr{
-						X:   p.checkExpr(x),
-						Sel: p.parseKeyIdent(),
+						X:      p.checkExpr(x),
+						Period: period,
+						Sel:    p.parseKeyIdent(),
 					}
+					x = p.wrapOptional(x, p.tok)
 					break
 				}
 
 				pos := p.pos
 				p.errorExpected(pos, "selector")
 				p.next() // make progress
-				x = &ast.SelectorExpr{X: x, Sel: &ast.Ident{NamePos: pos, Name: "_"}}
+				x = &ast.SelectorExpr{
+					X:      x,
+					Period: period,
+					Sel:    &ast.Ident{NamePos: pos, Name: "_"},
+				}
 			}
 			c.closeNode(p, x)
 		case token.LBRACK:
@@ -1621,6 +1754,9 @@ func (p *parser) parseUnaryExpr() ast.Expr {
 	if p.trace {
 		defer un(trace(p, "UnaryExpr"))
 	}
+	// Every level of expression nesting reaches this point, so guarding
+	// here alone bounds the parser's recursion depth.
+	defer decNestLevel(incNestLevel(p))
 
 	switch p.tok {
 	case token.EQL:
@@ -1644,25 +1780,6 @@ func (p *parser) parseUnaryExpr() ast.Expr {
 	return p.parsePrimaryExpr()
 }
 
-func (p *parser) tokPrec() (token.Token, int) {
-	tok := p.tok
-	if tok == token.IDENT {
-		switch p.lit {
-		case "quo":
-			return token.IQUO, 7
-		case "rem":
-			return token.IREM, 7
-		case "div":
-			return token.IDIV, 7
-		case "mod":
-			return token.IMOD, 7
-		default:
-			return tok, 0
-		}
-	}
-	return tok, tok.Precedence()
-}
-
 // If lhs is set and the result is an identifier, it is not resolved.
 func (p *parser) parseBinaryExpr(prec1 int) ast.Expr {
 	if p.trace {
@@ -1676,7 +1793,7 @@ func (p *parser) parseBinaryExpr(prec1 int) ast.Expr {
 
 func (p *parser) parseBinaryExprTail(prec1 int, x ast.Expr) ast.Expr {
 	for {
-		op, prec := p.tokPrec()
+		op, prec := p.tok, p.tok.Precedence()
 		if prec < prec1 {
 			return x
 		}
@@ -1688,7 +1805,8 @@ func (p *parser) parseBinaryExprTail(prec1 int, x ast.Expr) ast.Expr {
 			OpPos: pos,
 			Op:    op,
 			// Treat nested expressions as RHS.
-			Y: p.checkExpr(p.parseBinaryExpr(prec + 1))})
+			Y: p.checkExpr(p.parseBinaryExpr(prec + 1)),
+		})
 	}
 }
 
@@ -1717,8 +1835,14 @@ func (p *parser) parseInterpolation() (expr ast.Expr) {
 		exprs = append(exprs, p.parseRHS())
 
 		cc = p.openComments()
+		// If a comma was inserted, consume it to find the closing parenthesis.
+		// Newlines inside string interpolations are allowed; the formatter
+		// normalizes leading/trailing newlines to be both present or both absent.
+		if p.tok == token.COMMA && p.lit == "\n" {
+			p.next()
+		}
 		if p.tok != token.RPAREN {
-			p.errf(p.pos, "expected ')' for string interpolation")
+			p.errorExpected(p.pos, "')' for string interpolation")
 		}
 		lit = p.scanner.ResumeInterpolation()
 		pos = p.pos
@@ -1783,28 +1907,18 @@ func (p *parser) parseImportSpec(_ int) *ast.ImportSpec {
 		}
 	}
 
-	pos := p.pos
-	var path string
-	if p.tok == token.STRING {
-		path = p.lit
-		if !isValidImport(path) {
-			p.errf(pos, "invalid import path: %s", path)
-		}
-		p.next()
-		p.expectComma() // call before accessing p.linecomment
-	} else {
-		p.expect(token.STRING) // use expect() error handling
-		if p.tok == token.COMMA {
-			p.expectComma() // call before accessing p.linecomment
-		}
+	path := p.lit
+	pos := p.expect(token.STRING)
+	if pos.IsValid() && !isValidImport(path) {
+		p.errf(pos, "invalid import path: %s", path)
 	}
+	p.expectComma() // skip over a comma or newline
 	// collect imports
 	spec := &ast.ImportSpec{
 		Name: ident,
 		Path: &ast.BasicLit{ValuePos: pos, Kind: token.STRING, Value: path},
 	}
 	c.closeNode(p, spec)
-	p.imports = append(p.imports, spec)
 
 	return spec
 }
@@ -1827,7 +1941,7 @@ func (p *parser) parseImports() *ast.ImportDecl {
 		}
 		p.closeList()
 		rparen = p.expect(token.RPAREN)
-		p.expectComma()
+		p.expectComma() // skip over a comma or newline
 	} else {
 		list = append(list, p.parseImportSpec(0))
 	}
@@ -1897,7 +2011,7 @@ func (p *parser) parseFile() *ast.File {
 			Name:       name,
 		}
 		decls = append(decls, pkg)
-		p.expectComma()
+		p.expectComma() // skip over a comma or newline
 		c.closeNode(p, pkg)
 	}
 
@@ -1922,7 +2036,6 @@ func (p *parser) parseFile() *ast.File {
 	p.closeList()
 
 	f := &ast.File{
-		Imports:         p.imports,
 		Decls:           decls,
 		LanguageVersion: p.cfg.Version,
 	}

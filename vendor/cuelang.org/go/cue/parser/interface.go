@@ -23,6 +23,7 @@ import (
 	"cuelang.org/go/cue/ast/astutil"
 	"cuelang.org/go/cue/errors"
 	"cuelang.org/go/cue/token"
+	"cuelang.org/go/internal/cueexperiment"
 	"cuelang.org/go/internal/cueversion"
 	"cuelang.org/go/internal/mod/semver"
 	"cuelang.org/go/internal/source"
@@ -155,33 +156,6 @@ func Version(v string) Option {
 	})
 }
 
-// FromVersion specifies until which legacy version the parser should provide
-// backwards compatibility.
-//
-// Deprecated: use [Version] instead.
-func FromVersion(version int) Option {
-	return optionFunc(func(cfg *Config) {})
-}
-
-// DeprecationError is a sentinel error to indicate that an error is
-// related to an unsupported old CUE syntax.
-type DeprecationError struct {
-	// Deprecated: version integers have been replaced by language versions as semver strings.
-	Version int
-}
-
-func (e *DeprecationError) Error() string {
-	return "try running `cue fix` (possibly with an earlier version, like v0.2.2) to upgrade"
-}
-
-const (
-	// Deprecated: see [Version].
-	Latest = 0
-
-	// Deprecated: see [Version].
-	FullBackwardCompatibility = 0
-)
-
 // FileOffset specifies the File position info to use.
 //
 // Deprecated: this has no effect.
@@ -207,7 +181,7 @@ func FileOffset(pos int) Option {
 // errors were found, the result is a partial AST (with Bad* nodes
 // representing the fragments of erroneous source code). Multiple errors
 // are returned via a ErrorList which is sorted by file position.
-func ParseFile(filename string, src interface{}, mode ...Option) (f *ast.File, err error) {
+func ParseFile(filename string, src any, mode ...Option) (f *ast.File, err error) {
 
 	// get source
 	text, err := source.ReadAll(filename, src)
@@ -249,7 +223,7 @@ func ParseFile(filename string, src interface{}, mode ...Option) (f *ast.File, e
 // The arguments have the same meaning as for Parse, but the source must
 // be a valid CUE (type or value) expression. Specifically, fset must not
 // be nil.
-func ParseExpr(filename string, src interface{}, mode ...Option) (ast.Expr, error) {
+func ParseExpr(filename string, src any, mode ...Option) (_ ast.Expr, err error) {
 	// get source
 	text, err := source.ReadAll(filename, src)
 	if err != nil {
@@ -266,6 +240,13 @@ func ParseExpr(filename string, src interface{}, mode ...Option) (ast.Expr, erro
 
 	// parse expr
 	p.init(filename, text, mode)
+	// We don't have a file with experiment attributes, but we still want to apply
+	// the default experiment values given the configured language version.
+	exp, expErr := cueexperiment.NewFile(p.cfg.Version)
+	if expErr != nil {
+		return nil, errors.Newf(token.NoPos, "parsing experiments: %v", expErr)
+	}
+	p.experiments = exp
 	// Set up pkg-level scopes to avoid nil-pointer errors.
 	// This is not needed for a correct expression x as the
 	// parser will be ok with a nil topScope, but be cautious

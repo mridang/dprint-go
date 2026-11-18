@@ -79,6 +79,9 @@ type ErrFunc func(pos token.Pos, msg string, args ...interface{})
 //    Value               Field          Field
 // Pkg                    nil            ImportSpec
 
+// TODO: allow passing all files in a package and mark nodes as predeclared
+// identifiers.
+
 // Resolve resolves all identifiers in a file, populating [ast.Ident.Node] fields.
 // Unresolved identifiers are recorded in [ast.File.Unresolved].
 // It will not overwrite already resolved identifiers.
@@ -227,25 +230,31 @@ func newScope(f *ast.File, outer *scope, node ast.Node, decls []ast.Decl) *scope
 	return s
 }
 
-func (s *scope) isLet(n ast.Node) bool {
+func (s *scope) isLet(n, link ast.Node) bool {
 	if _, ok := s.node.(*ast.Field); ok {
 		return true
 	}
+	if _, ok := link.(*ast.PostfixAlias); ok {
+		return true
+	}
 	switch n.(type) {
-	case *ast.LetClause, *ast.Alias, *ast.Field:
+	case *ast.LetClause, *ast.TryClause, *ast.Alias, *ast.Field:
 		return true
 	}
 	return false
 }
 
-func (s *scope) mustBeUnique(n ast.Node) bool {
+func (s *scope) mustBeUnique(n, link ast.Node) bool {
 	if _, ok := s.node.(*ast.Field); ok {
+		return true
+	}
+	if _, ok := link.(*ast.PostfixAlias); ok {
 		return true
 	}
 	switch n.(type) {
 	// TODO: add *ast.ImportSpec when some implementations are moved over to
 	// Sanitize.
-	case *ast.ImportSpec, *ast.LetClause, *ast.Alias, *ast.Field:
+	case *ast.ImportSpec, *ast.LetClause, *ast.TryClause, *ast.Alias, *ast.Field:
 		return true
 	}
 	return false
@@ -260,10 +269,10 @@ func (s *scope) insert(name string, n, link ast.Node, f *ast.Field) {
 	}
 	// TODO: record both positions.
 	if outer, _, existing := s.lookup(name); existing.node != nil {
-		if s.isLet(n) != outer.isLet(existing.node) {
+		if s.isLet(n, link) != outer.isLet(existing.node, existing.link) {
 			s.errFn(n.Pos(), "cannot have both alias and field with name %q in same scope", name)
 			return
-		} else if s.mustBeUnique(n) || outer.mustBeUnique(existing.node) {
+		} else if s.mustBeUnique(n, link) || outer.mustBeUnique(existing.node, existing.link) {
 			if outer == s {
 				if _, ok := existing.node.(*ast.ImportSpec); ok {
 					return
@@ -334,7 +343,7 @@ func insertPostfixAliases(s *scope, x *ast.Field, expr ast.Node) {
 		// Single form: ~X
 		if !hasField {
 			s.errFn(a.Pos(),
-				"single postfix alias %q field cannot be the blank identifier", a.Label.Name)
+				"single postfix alias %q field cannot be the blank identifier", a.Field.Name)
 		} else {
 			s.insert(a.Field.Name, x, a, nil)
 		}
@@ -380,6 +389,11 @@ func (s *scope) Before(n ast.Node) bool {
 		s = scopeClauses(s, x.Clauses)
 		defer s.freeScopesUntil(outer)
 		ast.Walk(x.Value, s.Before, nil)
+		// Walk the fallback clause in the OUTER scope, since fallback should not
+		// have access to for/let variables from the comprehension clauses.
+		if x.Fallback != nil {
+			ast.Walk(x.Fallback.Body, outer.Before, nil)
+		}
 		return false
 
 	case *ast.Field:
@@ -466,7 +480,12 @@ func (s *scope) Before(n ast.Node) bool {
 		saved := s.index[name]
 		delete(s.index, name) // The same name may still appear in another scope
 
+		// Set inField so that the label expression check in pattern constraints
+		// does not walk beyond the let clause's value. A let clause's value is
+		// a separate context, just like a field value.
+		s.inField = true
 		ast.Walk(x.Expr, s.Before, nil)
+		s.inField = false
 		s.index[name] = saved
 		return false
 
@@ -542,6 +561,17 @@ func scopeClauses(s *scope, clauses []ast.Clause) *scope {
 			ast.Walk(x.Expr, s.Before, nil)
 			s = newScope(s.file, s, x, nil)
 			s.insert(x.Ident.Name, x.Ident, x, nil)
+
+		case *ast.TryClause:
+			// For the assignment form (try x = expr), handle scope like LetClause.
+			if x.Ident != nil {
+				ast.Walk(x.Expr, s.Before, nil)
+				s = newScope(s.file, s, x, nil)
+				s.insert(x.Ident.Name, x.Ident, x, nil)
+			} else {
+				// For the struct form (try { ... }), just walk normally.
+				ast.Walk(c, s.Before, nil)
+			}
 
 		default:
 			ast.Walk(c, s.Before, nil)

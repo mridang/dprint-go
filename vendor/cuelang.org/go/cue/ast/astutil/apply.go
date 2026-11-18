@@ -317,8 +317,24 @@ func applyDeclList(v applyVisitor, parent Cursor, list []ast.Decl) []ast.Decl {
 	return c.decls
 }
 
-func apply[N ast.Node](v applyVisitor, parent Cursor, nodePtr *N) {
+type nilableNode interface {
+	ast.Node
+	comparable // pointer nodes, which can be compared to nil
+}
+
+func applyIfNotNil[N nilableNode](v applyVisitor, parent Cursor, nodePtr *N) {
+	var zero N // nil
+	if *nodePtr != zero {
+		apply(v, parent, nodePtr)
+	}
+}
+
+func apply[N nilableNode](v applyVisitor, parent Cursor, nodePtr *N) {
 	node := *nodePtr
+	var zero N // nil
+	if node == zero {
+		panic("unexpected nil node; malformed syntax tree?")
+	}
 	c := newCursor(parent, node, nodePtr)
 	applyCursor(v, c)
 	if c.modified && parent != nil {
@@ -381,12 +397,8 @@ func applyCursor(v applyVisitor, c Cursor) {
 	case *ast.Field:
 		beforeValue = n.Value
 		apply(v, c, &n.Label)
-		if n.Alias != nil {
-			apply(v, c, &n.Alias)
-		}
-		if n.Value != nil {
-			apply(v, c, &n.Value)
-		}
+		applyIfNotNil(v, c, &n.Alias)
+		applyIfNotNil(v, c, &n.Value)
 		applyList(v, c, n.Attrs)
 
 	case *ast.StructLit:
@@ -403,9 +415,7 @@ func applyCursor(v applyVisitor, c Cursor) {
 		applyList(v, c, n.Elts)
 
 	case *ast.Ellipsis:
-		if n.Type != nil {
-			apply(v, c, &n.Type)
-		}
+		applyIfNotNil(v, c, &n.Type)
 
 	case *ast.ParenExpr:
 		apply(v, c, &n.X)
@@ -420,12 +430,8 @@ func applyCursor(v applyVisitor, c Cursor) {
 
 	case *ast.SliceExpr:
 		apply(v, c, &n.X)
-		if n.Low != nil {
-			apply(v, c, &n.Low)
-		}
-		if n.High != nil {
-			apply(v, c, &n.High)
-		}
+		applyIfNotNil(v, c, &n.Low)
+		applyIfNotNil(v, c, &n.High)
 
 	case *ast.CallExpr:
 		apply(v, c, &n.Fun)
@@ -443,9 +449,7 @@ func applyCursor(v applyVisitor, c Cursor) {
 
 	// Declarations
 	case *ast.ImportSpec:
-		if n.Name != nil {
-			apply(v, c, &n.Name)
-		}
+		applyIfNotNil(v, c, &n.Name)
 		apply(v, c, &n.Path)
 
 	case *ast.BadDecl:
@@ -466,16 +470,13 @@ func applyCursor(v applyVisitor, c Cursor) {
 		apply(v, c, &n.Expr)
 
 	case *ast.PostfixAlias:
-		if n.Label != nil {
-			apply(v, c, &n.Label)
-		}
-		if n.Field != nil {
-			apply(v, c, &n.Field)
-		}
+		applyIfNotNil(v, c, &n.Label)
+		applyIfNotNil(v, c, &n.Field)
 
 	case *ast.Comprehension:
 		applyList(v, c, n.Clauses)
 		apply(v, c, &n.Value)
+		applyIfNotNil(v, c, &n.Fallback)
 
 	// Files and packages
 	case *ast.File:
@@ -485,14 +486,21 @@ func applyCursor(v applyVisitor, c Cursor) {
 		apply(v, c, &n.Name)
 
 	case *ast.ForClause:
-		if n.Key != nil {
-			apply(v, c, &n.Key)
-		}
+		applyIfNotNil(v, c, &n.Key)
 		apply(v, c, &n.Value)
 		apply(v, c, &n.Source)
 
 	case *ast.IfClause:
 		apply(v, c, &n.Condition)
+
+	case *ast.FallbackClause:
+		apply(v, c, &n.Body)
+
+	case *ast.TryClause:
+		if n.Ident != nil {
+			apply(v, c, &n.Ident)
+			apply(v, c, &n.Expr)
+		}
 
 	default:
 		panic(fmt.Sprintf("Walk: unexpected node type %T", n))

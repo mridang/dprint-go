@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 	"sync"
+
+	"cuelang.org/go/internal/cueversion"
 )
 
 // Flags holds the set of global CUE_EXPERIMENT flags. It is initialized by Init.
@@ -12,24 +14,23 @@ var Flags Config
 
 // Config holds the set of known CUE_EXPERIMENT flags.
 //
-// When adding, deleting, or modifying entries below,
-// update cmd/cue/cmd/help.go as well for `cue help environment`.
+// Keep the fields sorted from oldest to newest based on when the experiment was added.
 type Config struct {
-	// CmdReferencePkg requires referencing an imported tool package to declare tasks.
-	// Otherwise, declaring tasks via "$id" or "kind" string fields is allowed.
-	CmdReferencePkg bool `experiment:"preview:v0.13.0,default:v0.14.0"`
+	// The flags in this first section describe active experiments.
+	// Sort from oldest to newest based on when they were introduced as a `preview`.
 
-	// KeepValidators prevents validators from simplifying into concrete values,
-	// even if their concrete value could be derived, such as '>=1 & <=1' to '1'.
-	// Proposal:     https://cuelang.org/discussion/3775.
-	// Spec change:  https://cuelang.org/cl/1217013
-	// Spec change:  https://cuelang.org/cl/1217014
-	KeepValidators bool `experiment:"preview:v0.14.0,default:v0.14.0,stable:v0.15.0"`
+	// FormatV2 selects the Wadler-Lindig pretty-printer as the
+	// implementation behind "cue fmt" and "cue/format".
+	// It only exists from v0.18.0 onwards; v0.17 knows about it solely so that
+	// CUE_EXPERIMENT=formatv2=0 is accepted across both versions. Enabling it
+	// is rejected, as the implementation is not present.
+	FormatV2 bool `experiment:"preview:v0.18.0"`
 
-	// The flags below describe completed experiments; they can still be set
+	// The flags in this second section describe completed experiments; they can still be set
 	// as long as the value aligns with the final behavior once the experiment finished.
 	// Breaking users who set such a flag seems unnecessary,
 	// and it simplifies using the same experiment flags across a range of CUE versions.
+	// Sort from oldest to newest based on when they were completed as `stable` or `withdrawn`.
 
 	// Modules enables support for the modules and package management proposal
 	// as described in https://cuelang.org/discussion/2939.
@@ -55,6 +56,17 @@ type Config struct {
 	// EvalV3 enables the new CUE evaluator, addressing performance issues
 	// and bringing better algorithms for disjunctions, closedness, and cycles.
 	EvalV3 bool `experiment:"preview:v0.9.0,default:v0.13.0,stable:v0.15.0"`
+
+	// KeepValidators prevents validators from simplifying into concrete values,
+	// even if their concrete value could be derived, such as '>=1 & <=1' to '1'.
+	// Proposal:     https://cuelang.org/discussion/3775.
+	// Spec change:  https://cuelang.org/cl/1217013
+	// Spec change:  https://cuelang.org/cl/1217014
+	KeepValidators bool `experiment:"preview:v0.14.0,default:v0.14.0,stable:v0.15.0"`
+
+	// CmdReferencePkg requires referencing an imported tool package to declare tasks.
+	// Otherwise, declaring tasks via "$id" or "kind" string fields is allowed.
+	CmdReferencePkg bool `experiment:"preview:v0.13.0,default:v0.14.0,stable:v0.16.0"`
 }
 
 // initExperimentFlags initializes the experiment flags by processing both
@@ -66,8 +78,10 @@ func initExperimentFlags() error {
 		return err
 	}
 
-	// First, set defaults based on experiment lifecycle
-	if err := parseConfig(&Flags, "", experiments); err != nil {
+	// Use this binary's language version rather than an empty version, which
+	// is treated as the newest version and would wrongly allow enabling
+	// experiments that only exist in later CUE versions.
+	if err := parseConfig(&Flags, cueversion.LanguageVersion(), experiments); err != nil {
 		return fmt.Errorf("error in CUE_EXPERIMENT: %w", err)
 	}
 	return nil

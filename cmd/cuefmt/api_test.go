@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	cueformat "cuelang.org/go/cue/format"
+
 	"github.com/mridang/dprint-go/internal/dprint"
 )
 

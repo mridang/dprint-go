@@ -10,9 +10,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/wasmerio/wasmer-go/wasmer"
+
 	"github.com/mridang/dprint-go/internal/dprint"
 	"github.com/mridang/dprint-go/internal/wasm"
-	"github.com/wasmerio/wasmer-go/wasmer"
 )
 
 // TestWasm_Exports_And_OptionalCall verifies that the compiled Wasm module
@@ -74,7 +75,8 @@ func TestWasm_Exports_And_OptionalCall(t *testing.T) {
 		t.Fatalf("instantiate: %v", err)
 	}
 
-	if initFn, err := instance.Exports.GetFunction("_initialize"); err == nil { //nolint:govet // TinyGo export name is required.
+	initFn, initErr := instance.Exports.GetFunction("_initialize")
+	if initErr == nil {
 		if _, err = initFn(); err != nil {
 			t.Skipf("skipping runtime calls; _initialize trapped: %v", err)
 			return

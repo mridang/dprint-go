@@ -11,7 +11,7 @@ import (
 	"strings"
 	"unsafe"
 
-	"github.com/mridang/dprint-plugin-go/internal/dprint"
+	"github.com/mridang/dprint-go/internal/dprint"
 )
 
 //go:embed VERSION

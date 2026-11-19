@@ -12,6 +12,7 @@ import (
 	"unsafe"
 
 	cueformat "cuelang.org/go/cue/format"
+
 	"github.com/mridang/dprint-plugin-go/internal/dprint"
 )
 

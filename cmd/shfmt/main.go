@@ -11,8 +11,9 @@ import (
 	"strings"
 	"unsafe"
 
-	"github.com/mridang/dprint-plugin-go/internal/dprint"
 	"mvdan.cc/sh/v3/syntax"
+
+	"github.com/mridang/dprint-plugin-go/internal/dprint"
 )
 
 // bashName is both the Bash file extension and the name of the Bash language dialect.

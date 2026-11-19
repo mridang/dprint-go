@@ -8,6 +8,7 @@ import (
 
 	"github.com/emicklei/proto"
 	"github.com/emicklei/proto-contrib/pkg/protofmt"
+
 	"github.com/mridang/dprint-plugin-go/internal/dprint"
 )
 

@@ -56,14 +56,14 @@ test-protofmt:
 lint:
 	golangci-lint run --verbose
 
-# The explicit config keeps dprint from also loading the per-plugin
+# Config discovery is off so dprint does not also load the per-plugin
 # cmd/*/dprint.json files, which need the built wasm plugins.
 format:
-	dprint fmt --config dprint.json
+	dprint fmt --config dprint.json --config-discovery=false
 	go fmt ./...
 
 format-check:
-	dprint check --config dprint.json
+	dprint check --config dprint.json --config-discovery=false
 	test -z "$$(gofmt -s -l .)"
 
 clean-coverage:

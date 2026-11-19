@@ -32,7 +32,8 @@ jobs:
 
       - name: Check Gofmt
         run: |
-          unformatted=$(gofmt -s -l .; go run golang.org/x/tools/cmd/goimports@latest -l .)
+          files=$(git ls-files '*.go' ':!vendor')
+          unformatted=$(gofmt -s -l $files; go run golang.org/x/tools/cmd/goimports@latest -l $files)
           if [ -n "$unformatted" ]; then
             echo "$unformatted"
             exit 1

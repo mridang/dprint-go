@@ -3,9 +3,7 @@
   "packages": {
     "dprint": "latest",
     "go": "1.27",
-    "tinygo": "latest",
-    "gotestsum": "latest",
-    "github:NixOS/nixpkgs/nixpkgs-unstable#golangci-lint": ""
+    "tinygo": "latest"
   },
   "env": {
     "GOMODCACHE": "$DEVBOX_PROJECT_ROOT/.go",

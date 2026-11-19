@@ -33,9 +33,6 @@ jobs:
         with:
           tinygo-version: "0.44.0"
 
-      - name: Install gotestsum
-        run: go install gotest.tools/gotestsum@latest
-
       - name: Test
         run: make test
 

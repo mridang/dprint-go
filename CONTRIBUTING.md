@@ -13,7 +13,7 @@ Thank you for your interest in contributing!
 
 ```bash
 # Install devbox (https://www.jetify.com/devbox/)
-devbox shell          # activates Go 1.27, TinyGo, dprint, etc.
+devbox shell          # activates Go 1.27, TinyGo, dprint, etc. (golangci-lint and gotestsum run through `go tool`)
 make build            # build every plugin to build/*.wasm
 make test             # run unit tests
 make lint             # golangci-lint

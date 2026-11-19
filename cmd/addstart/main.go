@@ -18,11 +18,11 @@ const expectedArgCount = 3
 // (used in tests) will crash if it's present.
 func main() {
 	if len(os.Args) != expectedArgCount {
-		log.Fatalf("Usage: %s <input.wasm> <output.wasm>", os.Args[0])
+		log.Fatalf("Usage: %s <input.wasm> <output.wasm>", os.Args[0]) //nolint:gosec // G706: argv[0] of a build tool.
 	}
 	inPath, outPath := os.Args[1], os.Args[2]
 
-	data, err := os.ReadFile(inPath)
+	data, err := os.ReadFile(inPath) //nolint:gosec // G703: reads the path the caller names.
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -33,7 +33,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if err = os.WriteFile(outPath, output, 0600); err != nil {
+	if err = os.WriteFile(outPath, output, 0600); err != nil { //nolint:gosec // G703: writes the path the caller names.
 		log.Fatal(err)
 	}
 }

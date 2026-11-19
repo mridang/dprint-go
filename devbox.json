@@ -4,7 +4,7 @@
     "dprint":   "latest",
     "tinygo":   "latest",
     "wabt":     "latest",
-    "go":       "1.25",
+    "go":       "1.27",
     "gotestsum": "latest",
     "wasmtime": "latest",
     "wasmer":   "latest",

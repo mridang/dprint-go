@@ -28,7 +28,7 @@ jobs:
       - name: Setup TinyGo
         uses: acifani/setup-tinygo@v2
         with:
-          tinygo-version: '0.39.0'
+          tinygo-version: '0.44.0'
 
       - name: Run GolangCILint
         uses: golangci/golangci-lint-action@v9

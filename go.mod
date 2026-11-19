@@ -1,6 +1,6 @@
 module github.com/mridang/dprint-plugin-go
 
-go 1.25.2
+go 1.27.1
 
 require (
 	cuelang.org/go v0.15.1

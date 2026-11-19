@@ -1,4 +1,4 @@
-name: Format Code (Gofmt)
+name: Format Code
 
 on: pull_request
 
@@ -23,17 +23,12 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: 'go.mod'
+          go-version-file: "go.mod"
 
-      - name: Setup TinyGo
-        uses: acifani/setup-tinygo@v2
-        with:
-          tinygo-version: '0.44.0'
-
-      - name: Check Gofmt
+      - name: Install dprint
         run: |
-          unformatted=$(gofmt -s -l .; go run golang.org/x/tools/cmd/goimports@latest -l .)
-          if [ -n "$unformatted" ]; then
-            echo "$unformatted"
-            exit 1
-          fi
+          curl -fsSL https://dprint.dev/install.sh | sh
+          echo "$HOME/.dprint/bin" >> "$GITHUB_PATH"
+
+      - name: Check formatting
+        run: make format-check

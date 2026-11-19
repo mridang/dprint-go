@@ -28,12 +28,10 @@ jobs:
       - name: Setup TinyGo
         uses: acifani/setup-tinygo@v2
         with:
-          tinygo-version: '0.39.0'
+          tinygo-version: '0.44.0'
 
       - name: Run Tests
-        run: |
-          go install gotest.tools/gotestsum@latest
-          make test
+        run: make test
 
       - name: Generate coverage report
         if: always()

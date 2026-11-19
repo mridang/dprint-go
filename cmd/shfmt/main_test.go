@@ -10,9 +10,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/wasmerio/wasmer-go/wasmer"
+
 	"github.com/mridang/dprint-go/internal/dprint"
 	"github.com/mridang/dprint-go/internal/wasm"
-	"github.com/wasmerio/wasmer-go/wasmer"
 )
 
 // TestWasm_Exports_And_OptionalCall verifies that the compiled Wasm module

@@ -9,6 +9,9 @@ defaults:
   run:
     working-directory: ./
 
+env:
+  DPRINT_VERSION: "0.60.1"
+
 jobs:
   code-formatting:
     runs-on: ubuntu-latest
@@ -24,11 +27,34 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: "go.mod"
+          cache: false
+
+      - name: Cache Go modules and build output
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+            ~/.cache/golangci-lint
+          key: go-${{ github.workflow }}-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            go-${{ github.workflow }}-${{ runner.os }}-
+
+      - name: Cache dprint
+        id: dprint-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.dprint
+            ~/.cache/dprint
+          key: dprint-${{ runner.os }}-${{ env.DPRINT_VERSION }}-${{ hashFiles('dprint.json') }}
 
       - name: Install dprint
-        run: |
-          curl -fsSL https://dprint.dev/install.sh | sh
-          echo "$HOME/.dprint/bin" >> "$GITHUB_PATH"
+        if: steps.dprint-cache.outputs.cache-hit != 'true'
+        run: curl -fsSL https://dprint.dev/install.sh | sh -s "$DPRINT_VERSION"
+
+      - name: Add dprint to PATH
+        run: echo "$HOME/.dprint/bin" >> "$GITHUB_PATH"
 
       - name: Check formatting
         run: make format-check

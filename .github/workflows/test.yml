@@ -27,6 +27,18 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: "go.mod"
+          cache: false
+
+      - name: Cache Go modules and build output
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+            ~/.cache/golangci-lint
+          key: go-${{ github.workflow }}-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            go-${{ github.workflow }}-${{ runner.os }}-
 
       - name: Setup TinyGo
         uses: acifani/setup-tinygo@v2

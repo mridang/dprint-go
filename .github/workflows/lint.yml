@@ -30,8 +30,5 @@ jobs:
         with:
           tinygo-version: '0.39.0'
 
-      - name: Run GolangCILint
-        uses: golangci/golangci-lint-action@v9
-        with:
-          version: latest
-          install-mode: goinstall
+      - name: Lint
+        run: make lint

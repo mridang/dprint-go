@@ -1,9 +1,9 @@
-.PHONY: default build build-gofmt build-shfmt build-tffmt build-cuefmt build-protofmt lint test test-gofmt test-shfmt test-tffmt test-cuefmt test-protofmt vendor clean format clean-coverage ensure-gotestsum
+.PHONY: default build build-gofmt build-shfmt build-tffmt build-cuefmt build-protofmt lint test test-gofmt test-shfmt test-tffmt test-cuefmt test-protofmt vendor clean format clean-coverage
 
 export GO111MODULE=on
 
 ROOT_BUILD_DIR := $(abspath build)
-GOTESTSUM ?= gotestsum
+GOTESTSUM ?= go tool gotestsum
 TEST_FORMAT ?= pkgname-and-test-fails
 COVER_DIR := .out/cover
 JUNIT_FILE := .out/junit.xml
@@ -29,11 +29,10 @@ build-protofmt:
 	$(MAKE) -C cmd/protofmt build OUT_DIR=$(ROOT_BUILD_DIR)
 
 lint:
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-	golangci-lint run --verbose
+	go tool golangci-lint run --verbose
 
 # Force module mode and CGO so wasmer-go finds its packaged libs.
-test: clean-coverage ensure-gotestsum
+test: clean-coverage
 	mkdir -p $(GOCACHE) $(GOTMPDIR) $(dir $(LCOV_FILE))
 	GOFLAGS= CGO_ENABLED=1 GOCACHE=$(GOCACHE) GOTMPDIR=$(GOTMPDIR) $(GOTESTSUM) --junitfile $(JUNIT_FILE) --format $(TEST_FORMAT) -- -mod=mod -coverpkg=./... -covermode=atomic -coverprofile=$(LCOV_FILE) -count=1 ./...
 
@@ -70,8 +69,3 @@ format:
 	go install golang.org/x/tools/cmd/goimports@latest
 	goimports -w=true ./
 	gofmt -s=true -w=true ./
-
-ensure-gotestsum:
-	@if ! command -v $(GOTESTSUM) >/dev/null 2>&1; then \
-		GOFLAGS=-mod=mod go install gotest.tools/gotestsum@latest; \
-	fi

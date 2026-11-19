@@ -5,15 +5,13 @@
     "tinygo":   "latest",
     "wabt":     "latest",
     "go":       "1.25",
-    "gotestsum": "latest",
     "wasmtime": "latest",
     "wasmer":   "latest",
     "wasm3": {
       "version":        "latest",
       "allow_insecure": ["wasm3-0.5.0"]
     },
-    "python38":                                            "latest",
-    "github:NixOS/nixpkgs/nixpkgs-unstable#golangci-lint": ""
+    "python38": "latest"
   },
   "env": {
     "GOMODCACHE": "$DEVBOX_PROJECT_ROOT/.go",
@@ -24,7 +22,7 @@
     "scripts": {
       "test":   "make test",
       "build":  "go build ./pkg/...",
-      "lint":   "golangci-lint run --fix",
+      "lint":   "go tool golangci-lint run --fix",
       "format": "go fmt ./..."
     }
   }

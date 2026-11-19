@@ -10,7 +10,7 @@ import (
 	"strings"
 	"unsafe"
 
-	"github.com/mridang/dprint-plugin-go/internal/dprint"
+	"github.com/mridang/dprint-go/internal/dprint"
 	"mvdan.cc/sh/v3/syntax"
 )
 

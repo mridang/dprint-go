@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/mridang/dprint-plugin-go/internal/wasm"
+	"github.com/mridang/dprint-go/internal/wasm"
 )
 
 const expectedArgCount = 3

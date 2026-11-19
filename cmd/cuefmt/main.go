@@ -11,7 +11,7 @@ import (
 	"unsafe"
 
 	cueformat "cuelang.org/go/cue/format"
-	"github.com/mridang/dprint-plugin-go/internal/dprint"
+	"github.com/mridang/dprint-go/internal/dprint"
 )
 
 var currentConfig = defaultConfig() //nolint:gochecknoglobals // required for wasm config storage.

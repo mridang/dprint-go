@@ -1,4 +1,4 @@
-module github.com/mridang/dprint-plugin-go
+module github.com/mridang/dprint-go
 
 go 1.27.1
 

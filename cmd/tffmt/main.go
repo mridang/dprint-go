@@ -16,7 +16,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/hashicorp/hcl/v2/hclwrite"
 
-	"github.com/mridang/dprint-plugin-go/internal/dprint"
+	"github.com/mridang/dprint-go/internal/dprint"
 )
 
 var currentConfig = defaultConfig() //nolint:gochecknoglobals // required for wasm config storage.

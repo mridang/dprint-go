@@ -1,4 +1,4 @@
-.PHONY: default build build-gofmt build-shfmt build-tffmt build-cuefmt build-protofmt lint test test-gofmt test-shfmt test-tffmt test-cuefmt test-protofmt vendor clean format clean-coverage ensure-gotestsum
+.PHONY: default build build-gofmt build-shfmt build-tffmt build-cuefmt build-protofmt lint test test-gofmt test-shfmt test-tffmt test-cuefmt test-protofmt clean format clean-coverage ensure-gotestsum
 
 export GO111MODULE=on
 
@@ -59,9 +59,6 @@ test-protofmt:
 
 clean-coverage:
 	rm -rf .out
-
-vendor:
-	go mod vendor
 
 clean:
 	rm -rf ./build

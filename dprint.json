@@ -1,17 +1,23 @@
 {
   "includes": [
-    "**/*.go",
-    "**/*.sh",
-    "**/*.bash",
-    "**/*.tf",
-    "**/*.cue",
-    "**/*.proto"
+    "**/*.md",
+    "**/*.json",
+    "**/*.yml",
+    "**/*.yaml",
+    "**/*.toml"
+  ],
+  "excludes": [
+    "**/zz_generated.go",
+    "**/vendor/**",
+    "**/.devbox/**",
+    "**/.go/**",
+    "**/.out/**",
+    "**/build/**"
   ],
   "plugins": [
-    "./build/gofmt.wasm",
-    "./build/shfmt.wasm",
-    "./build/tffmt.wasm",
-    "./build/cuefmt.wasm",
-    "./build/protofmt.wasm"
+    "https://plugins.dprint.dev/markdown-0.18.0.wasm",
+    "https://plugins.dprint.dev/json-0.20.0.wasm",
+    "https://plugins.dprint.dev/g-plane/pretty_yaml-v0.5.0.wasm",
+    "https://plugins.dprint.dev/toml-0.7.0.wasm"
   ]
 }

@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mridang/dprint-plugin-go/internal/dprint"
-	"github.com/mridang/dprint-plugin-go/internal/wasm"
+	"github.com/mridang/dprint-go/internal/dprint"
+	"github.com/mridang/dprint-go/internal/wasm"
 	"github.com/wasmerio/wasmer-go/wasmer"
 )
 

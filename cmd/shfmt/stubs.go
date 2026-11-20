@@ -35,7 +35,9 @@ func host_write_buffer(ptr uint32)
 //go:wasmimport dprint host_format
 //nolint:revive,staticcheck // WASM exports require snake_case names.
 //goland:noinspection GoUnusedFunction,GoSnakeCaseUsage,GoUnusedParameter
-func host_format(filePathPtr, filePathLen, rangeStart, rangeEnd, overridePtr, overrideLen, fileBytesPtr, fileBytesLen uint32) uint32
+func host_format(
+	filePathPtr, filePathLen, rangeStart, rangeEnd, overridePtr, overrideLen, fileBytesPtr, fileBytesLen uint32,
+) uint32
 
 // The host_get_formatted_text tells the host to store the formatted text in its
 // local byte array and returns the byte length of that text. Call this after

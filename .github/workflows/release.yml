@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - main
 
 permissions:
   contents: write
@@ -11,6 +12,9 @@ permissions:
 defaults:
   run:
     working-directory: ./
+
+env:
+  GONOSUMDB: github.com/mridang/dprint-go/*
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -26,16 +30,18 @@ jobs:
 
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: 'go.mod'
+          go-version-file: "go.mod"
 
       - name: Setup TinyGo
         uses: acifani/setup-tinygo@v2
         with:
-          tinygo-version: '0.39.0'
+          tinygo-version: "0.42.0"
 
       - name: Install Semantic Release
         run: |

@@ -13,4 +13,4 @@ clean:
 	rm -rf $(OUT_DIR)
 
 lint:
-	golangci-lint run
+	go tool golangci-lint run

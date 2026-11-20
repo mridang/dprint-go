@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mridang/dprint-plugin-go/internal/dprint"
+	"github.com/mridang/dprint-go/internal/dprint"
 )
 
 //goland:noinspection DuplicatedCode

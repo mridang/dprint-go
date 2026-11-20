@@ -1,4 +1,4 @@
-name: Run Tests (Jest)
+name: Run Tests
 
 on: pull_request
 
@@ -8,6 +8,9 @@ permissions:
 defaults:
   run:
     working-directory: ./
+
+env:
+  GONOSUMDB: github.com/mridang/dprint-go/*
 
 jobs:
   app-testing:
@@ -23,21 +26,19 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: 'go.mod'
+          go-version-file: "go.mod"
 
       - name: Setup TinyGo
         uses: acifani/setup-tinygo@v2
         with:
-          tinygo-version: '0.39.0'
+          tinygo-version: "0.42.0"
 
-      - name: Run Tests
-        run: |
-          go install gotest.tools/gotestsum@latest
-          make test
+      - name: Test
+        run: make test
 
       - name: Generate coverage report
         if: always()
         uses: mridang/action-test-reporter@v3
         with:
-          results-path: '.out/junit.xml'
-          coverage-path: '.out/lcov.info'
+          results-path: ".out/junit.xml"
+          coverage-path: ".out/lcov.info"

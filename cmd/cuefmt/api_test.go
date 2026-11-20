@@ -7,7 +7,8 @@ import (
 	"testing"
 
 	cueformat "cuelang.org/go/cue/format"
-	"github.com/mridang/dprint-plugin-go/internal/dprint"
+
+	"github.com/mridang/dprint-go/internal/dprint"
 )
 
 func TestAPI_CoversExports(t *testing.T) {

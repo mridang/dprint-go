@@ -1,35 +1,37 @@
 version: 2
 updates:
-  - package-ecosystem: 'gomod'
-    directory: '/'
+  - package-ecosystem: "gomod"
+    directories:
+      - "/"
+      - "/**/*"
     schedule:
-      interval: 'weekly'
+      interval: "weekly"
     commit-message:
-      prefix: 'chore(deps):'
+      prefix: "chore(deps):"
     open-pull-requests-limit: 10
     groups:
       gomod-version-updates:
         patterns:
-          - '*'
-        applies-to: 'version-updates'
+          - "*"
+        applies-to: "version-updates"
       gomod-security-updates:
         patterns:
-          - '*'
-        applies-to: 'security-updates'
+          - "*"
+        applies-to: "security-updates"
 
-  - package-ecosystem: 'github-actions'
-    directory: '/'
+  - package-ecosystem: "github-actions"
+    directory: "/"
     schedule:
-      interval: 'weekly'
+      interval: "weekly"
     commit-message:
-      prefix: 'chore(deps):'
+      prefix: "chore(deps):"
     open-pull-requests-limit: 10
     groups:
       actions-version-updates:
         patterns:
-          - '*'
-        applies-to: 'version-updates'
+          - "*"
+        applies-to: "version-updates"
       actions-security-updates:
         patterns:
-          - '*'
-        applies-to: 'security-updates'
+          - "*"
+        applies-to: "security-updates"

@@ -31,7 +31,7 @@ jobs:
       - name: Setup TinyGo
         uses: acifani/setup-tinygo@v2
         with:
-          tinygo-version: "0.44.0"
+          tinygo-version: "0.42.0"
 
       - name: Install gotestsum
         run: go install gotest.tools/gotestsum@latest
